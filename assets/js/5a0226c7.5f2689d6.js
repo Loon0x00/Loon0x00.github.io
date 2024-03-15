@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkmy_website=self.webpackChunkmy_website||[]).push([[3509],{1595:e=>{e.exports=JSON.parse('{"title":"\u63d2\u4ef6","slug":"/category/\u63d2\u4ef6","permalink":"/docs/category/\u63d2\u4ef6","navigation":{"previous":{"title":"Script API","permalink":"/docs/Script/script_api"},"next":{"title":"\u63d2\u4ef6","permalink":"/docs/Plugin/"}}}')}}]);
