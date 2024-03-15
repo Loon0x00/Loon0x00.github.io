@@ -34,6 +34,6 @@ jobs:
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
-          github_token: ${{ secrets.LOONHOME }}
+          github_token: ${{ secrets.LOONWEB }}
           # Build output to publish to the `gh-pages` branch:
           publish_dir: ./build
