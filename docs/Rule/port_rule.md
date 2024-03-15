@@ -1,0 +1,23 @@
+---
+sidebar_position: 5
+---
+
+# 端口规则
+根据请求的源端口或者目标端口进行匹配（3.1.7+）
+- 表示特定的某个端口，如`DEST-PORT,443,DIRECT`
+- 表示端口闭区间，如`DEST-PORT,80-443,DIRECT`
+- 使用`>, <, <=, >=` 表示一个无穷区间，如`DEST-PORT,>=443,DIRECT`
+
+## SRC-PORT
+```
+SRC-PORT,443,DIRECT
+SRC-PORT,80-443,DIRECT
+SRC-PORT,>=443,DIRECT
+```
+
+## DEST-PORT
+```
+DEST-PORT,443,DIRECT
+DEST-PORT,80-443,DIRECT
+DEST-PORT,>=443,DIRECT
+```
