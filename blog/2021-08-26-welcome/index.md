@@ -1,7 +1,7 @@
 ---
 slug: welcome
 title: Welcome
-authors: [Loon0x00]
+authors: [loon]
 tags: [hello]
 ---
 
