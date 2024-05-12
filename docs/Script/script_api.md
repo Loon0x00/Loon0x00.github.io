@@ -151,6 +151,18 @@ data: String类型，响应body
 
 `$httpClient.patch(params, function(errormsg,response,data){})`: 发起patch请求，参数、callback参数同get
 
+## 工具
+
+- **$utils**
+
+`$utils.geoip(ipStr)` : 查询IP地址的GEOIP，结果为ISO 3166 code
+
+`$utils.ipasn(ipStr)` : 查询IP地址的ASN
+
+`$utils.ipaso(ipStr)` : 查询IP地址的ASO
+
+`$utils.ungzip(binary<Uint8Array>)` : 解压gzip的二进制数据，返回解压缩后的二进制数据
+
 ## 其他
 
 - **$done()**
