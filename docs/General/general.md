@@ -120,3 +120,36 @@ disable-stun = true
 ```
 ## geoip-url
 自定义geoip数据库的url
+
+## udp-fallback-mode
+**3.2.0+ build(702)**
+
+当UDP的流量规则匹配到相关节点，但该节点不支持UDP或未未开启UDP转发时使用的策略，可选`DIRECT`、`REJECT`
+
+```
+udp-fallback-mode = REJECT
+```
+
+## domain-reject-phase
+**3.2.0+ build(702)**
+
+域名拒绝规则执行的阶段
+- DNS：表示在拦截到系统的DNS请求后就去执行拒绝操作
+- Request：表示获取到相关域名的真实请求后执行拒绝操作
+
+⚠️ 在代理模式为HTTP Proxy & TUN 模式下，由于拦截到系统的DNS请求较少，DNS阶段的拒绝发生的次数也会减少
+```
+domain-reject-phase = DNS
+```
+
+## dns-reject-mode
+**3.2.0+ build(702)**
+
+在DNS阶段拒绝域名时采用的方式
+- LOOPBACKIP：回环IP
+- NOANSWER：DNS响应为空
+- NXDOMAIN：错误码为3的DNS响应
+
+```
+dns-reject-mode = LOOPBACKIP
+```

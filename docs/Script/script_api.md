@@ -99,7 +99,8 @@ $notification.post("title","subtitle","content","loon://switch")
 //如果既要支持附件和点击跳转，传入js对象
 var attach = {
     "openUrl":"loon://switch",
-    "mediaUrl":"https://example.com/img"
+    "mediaUrl":"https://example.com/img",
+    "clipboard":"tap to copy",//点击通知后进入Loon会复制到剪切板的内容（前提是允许Loon访问剪切板）
 }
 $notification.post("title","subtitle","content",attach)
 ```
