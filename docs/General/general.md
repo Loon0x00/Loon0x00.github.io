@@ -102,7 +102,7 @@ interface-mode = Performace
 
 
 ## force-http-engine-hosts
-有些app使用原始的tcp来进行http请求，这些流量就会走TUN，为了性能考虑，Loon默认只会解析80端口的这些http请求，如果一些请求的端口不是80，则可以在这里指定相关的域名或者端口，从而让Loon对这些http请求进行解析
+有些app使用原始的tcp来进行HTTP请求，此参数会强制Loon将原始TCP请求视为HTTP请求处理，以使所有高级功能可用，例如抓包、复写和脚本处理等。为了性能考虑，Loon默认只会处理80端口的这些原始TCP请求。其他端口需要在这里指定相关的域名或者端口。
 ```
 # :8080，表示解析所有8080端口，0表示解析所有端口
 # 通配符域名，解析所有端口下的相关域名
@@ -130,16 +130,16 @@ disable-stun = true
 udp-fallback-mode = REJECT
 ```
 
-## domain-reject-phase
+## domain-reject-mode
 **3.2.0+ build(702)**
 
 域名拒绝规则执行的阶段
-- DNS：表示在拦截到系统的DNS请求后就去执行拒绝操作
-- Request：表示获取到相关域名的真实请求后执行拒绝操作
+- DNS：使用 LoopbackIP、No Answer 或 NXDomain 的方式阻止 DNS 查询以达到拦截请求的目的
+- Request：在请求转发阶段拦截请求
 
-⚠️ 在代理模式为HTTP Proxy & TUN 模式下，由于拦截到系统的DNS请求较少，DNS阶段的拒绝发生的次数也会减少
+⚠️ 在 HTTP Proxy & TUN 模式下由于拦截到的系统 DNS 较少，大部分的拦截都会在转发请求阶段进行。
 ```
-domain-reject-phase = DNS
+domain-reject-mode = DNS
 ```
 
 ## dns-reject-mode
