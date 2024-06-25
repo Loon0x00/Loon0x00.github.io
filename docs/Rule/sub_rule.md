@@ -19,3 +19,5 @@ Loon目前可以承载数十万级别数量的规则，无须担心性能和耗�
 | IP-CIDR   |    1ms内     | 10万 | [ChainIP(10万IPV4，4千IPV6)](https://raw.githubusercontent.com/Loon0x00/LoonLiteRules/main/direct/chinaIPTest.list) |
 | IP-CIDR6| 1-2ms  | 4千| [ChainIP(10万IPV4，4千IPV6)](https://raw.githubusercontent.com/Loon0x00/LoonLiteRules/main/direct/chinaIPTest.list)|
 |IPANS|1ms内|5千|[中国大陆 ASN](https://raw.githubusercontent.com/VirgilClyne/GetSomeFries/main/ruleset/ASN.China.list)|
+
+DOMAIN,DOMAIN-SUFFIX,IP-CIDR,IP-CIDR6,GEOIP,IPASN,SRC-PORT,DEST-PORT,PROTOCOL类型的规则，查询耗时不会随着数量的增多而增多；DOMAIN-KEYWORD,USER-AGENT,URL-REGEX类型的规则会随着数量的增多而增加一些（5千+的DOMAIN-KEYWORD规则，查询耗时在10ms以内，USER-AGENT,URL-REGEX查询效率会随着相关表达式而波动，且测试数量较小暂时不做参考）；**所以在选择规则类型时，尽量优先选择前面类型的规则。**
