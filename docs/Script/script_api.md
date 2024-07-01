@@ -125,6 +125,7 @@ $notification.post("title","subtitle","content",attach)
     binary-mode:true,//请求响应返回二进制格式，默认false
     auto-redirect:false,//是否自动处理重定向，默认true（build 660+）
     auto-cookie:false,//是否自动存储并使用cookie，默认true（build 662+）
+    alpn:"h2",//采用的http请求方式，目前支持h1和h2，默认h1（build 715+），脚本中有多个相同host请求时推荐h2，增强请求并发性能
 }
 
 //回调参数
