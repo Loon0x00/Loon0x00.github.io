@@ -38,10 +38,46 @@ sidebar_position: 1
  ^http://example.com reject-array
 ```
 
-## Header 类型复写
+## Request Header 类型复写
 此类复写会修改请求的Header
 ```
  ^http://example.com header-add Connection keep-alive
  ^http://example.com header-del Cookie
  ^http://example.com header-replace User-Agent Unknown
+ ^http://example.com header-replace-regex User-Agent regex replace-value //替换User-Agent的值被正则regex匹配到的内容
 ```
+
+## Request Body 类型复写 (build 729+)
+此类复写会修改请求体
+```
+^http://example.com request-body-replace-regex regex replace-value
+^http://example.com mock-request-body data-type=text data="" 
+^http://example.com mock-request-body data-type=json data-path=request_body.json
+^http://example.com mock-request-body data-type=base64 data-path=request_body.raw 
+```
+- data-type: body的类型，`text`,`json`,`base64`
+- data: body的值，用双引号包裹，data-type为base64时，是一段base64字符串
+- data-path: body的文件路径，用双引号包裹，可以是url，也可以是iClcoud/Mock路径下的文件全名
+
+## Response Header 类型复写 (build 729+)
+此类复写会修改响应的Header
+```
+ ^http://example.com response-header-add Connection keep-alive
+ ^http://example.com response-header-del Cookie
+ ^http://example.com response-header-replace User-Agent Unknown
+ ^http://example.com response-header-replace-regex User-Agent regex replace-value
+```
+
+## Response Body 类型复写 (build 729+)
+此类复写会修改响应体
+```
+^http://example.com response-body-replace-regex regex replace-value
+^http://example.com mock-response-body data-type=text data="" status-code=200
+^http://example.com mock-response-body data-type=json data-path=response_body.json status-code=200
+^http://example.com mock-response-body data-type=base64 data-path=response_body.raw status-code=200
+```
+
+- data-type: body的类型，`text`,`json`,`base64`
+- data: body的值，用双引号包裹，data-type为base64时，是一段base64字符串
+- data-path: body的文件路径，用双引号包裹，可以是url，也可以是iClcoud/Mock路径下的文件全名
+- status-code: Http response status code
