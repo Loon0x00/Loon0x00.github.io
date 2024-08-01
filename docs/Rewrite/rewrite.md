@@ -47,6 +47,8 @@ sidebar_position: 1
  ^http://example.com header-replace-regex User-Agent regex replace-value //替换User-Agent的值被正则regex匹配到的内容
 ```
 
+**注意：由于在解析配置是用空格分割各个参数，如果配置的参数中有空格，请使用`\x20`代替**
+
 从3.2.1(build 730)开始，可以给一个Request Header类型的Rewrite设置修改多个值，如：
 ```
  ^http://example.com header-add Connection keep-alive Proxy-Connection keep-alive //header中添加Connection:keep-alive和Proxy-Connection:keep-alive
@@ -64,7 +66,7 @@ sidebar_position: 1
 ^http://example.com mock-request-body data-type=png data-path=request_body.raw mock-data-is-base64=true
 ```
 - data-type: body的类型，`json`,`text`,`css`,`html`,`javascript`,`plain`,`png`,`gif`,`jpeg`,`tiff`,`svg`,`mp4`,`form-data`
-- data: body的值，用双引号包裹，data-type为base64时，是一段base64字符串
+- data: body的值，用双引号包裹，**由于data会加载到内存中，建议采用data-path的方式配置中大型的Mock Data**
 - data-path: body的文件路径，用双引号包裹，可以是url，也可以是iClcoud/Mock路径下的文件全名
 - mock-data-is-base64：如果data或者data-path提供的数据是二进制的base64字符串，设置此配置为true
 
@@ -88,7 +90,7 @@ sidebar_position: 1
 ```
 
 - data-type: body的类型，`json`,`text`,`css`,`html`,`javascript`,`plain`,`png`,`gif`,`jpeg`,`tiff`,`svg`,`mp4`,`form-data`
-- data: body的值，用双引号包裹，data-type为base64时，是一段base64字符串
+- data: body的值，用双引号包裹，**由于data会加载到内存中，建议采用data-path的方式配置中大型的Mock Data**
 - data-path: body的文件路径，用双引号包裹，可以是url，也可以是iClcoud/Mock路径下的文件全名
 - mock-data-is-base64：如果data或者data-path提供的数据是二进制的base64字符串，设置此配置为true
 - status-code: Http response status code
