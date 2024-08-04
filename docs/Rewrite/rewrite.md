@@ -61,6 +61,15 @@ sidebar_position: 1
 此类复写会修改请求体
 ```
 ^http://example.com request-body-replace-regex regex1 replace-value1 regex2 replace-value2
+^http://example.com request-body-json-add data.apps[0] {"appName":"loon","appVersion":"3.2.1"} data.category tool
+^http://example.com request-body-json-replace data.ad {}
+^http://example.com request-body-json-del data.ad
+```
+request-body-json-xxx 类型的复写只有当请求体是Json格式时才会有效，提供一个定位到要处理的json对象的keypath即可添加、删除、替换相关json对象，keypath采用点分式，如 `data.apps[0].appname`,`[0]`表示数组第一个对象，如果keypath无法定位到json对象的子对象，或者数组越界，keypath无效。
+
+## Mock Request Body
+此类复写使用一个假数据模拟 Http request body
+```
 ^http://example.com mock-request-body data-type=text data="" 
 ^http://example.com mock-request-body data-type=json data-path=request_body.json
 ^http://example.com mock-request-body data-type=png data-path=request_body.raw mock-data-is-base64=true
@@ -84,6 +93,15 @@ sidebar_position: 1
 此类复写会修改响应体
 ```
 ^http://example.com response-body-replace-regex regex1 replace-value1 regex2 replace-value2
+^http://example.com response-body-json-add data.apps[0] {"appName":"loon","appVersion":"3.2.1"} data.category tool
+^http://example.com response-body-json-replace data.ad {}
+^http://example.com response-body-json-del data.ad
+```
+response-body-json-xxx 类型的复写只有当响应体是Json格式时才会有效，提供一个定位到需要处理的json对象的keypath即可添加、删除、替换相关json对象，keypath采用点分式，如 `data.apps[0].appname`,`[0]`表示数组第一个对象，如果keypath无法定位到json对象的子对象，或者数组越界，keypath无效。
+
+## Mock Request Body
+此类复写立即返回一个 Http request body
+```
 ^http://example.com mock-response-body data-type=text data="" status-code=200
 ^http://example.com mock-response-body data-type=json data-path=response_body.json status-code=200
 ^http://example.com mock-response-body data-type=svg data-path=response_body.raw mock-data-is-base64=true status-code=200
