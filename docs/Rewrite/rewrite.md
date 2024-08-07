@@ -81,3 +81,11 @@ sidebar_position: 1
 - data: body的值，用双引号包裹，data-type为base64时，是一段base64字符串
 - data-path: body的文件路径，用双引号包裹，可以是url，也可以是iClcoud/Mock路径下的文件全名
 - status-code: Http response status code
+
+**⚠️⚠️⚠️注意⚠️⚠️⚠️**
+
+**如果正则表达式或者替换的内容包含空格，请使用`\x20`表示，否则rewrite配置会解析异常**
+
+**如果正则表达式或者替换的内容包含空格，请使用`\x20`表示，否则rewrite配置会解析异常**
+
+**如果正则表达式或者替换的内容包含空格，请使用`\x20`表示，否则rewrite配置会解析异常**
