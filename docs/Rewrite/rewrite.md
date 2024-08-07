@@ -110,7 +110,8 @@ response-body-json-xxx 类型的复写只有当响应体是Json格式时才会�
 - data-type: body的类型，`json`,`text`,`css`,`html`,`javascript`,`plain`,`png`,`gif`,`jpeg`,`tiff`,`svg`,`mp4`,`form-data`
 - data: body的值，用双引号包裹，**由于data会加载到内存中，建议采用data-path的方式配置中大型的Mock Data**
 - data-path: body的文件路径，用双引号包裹，可以是url，也可以是iClcoud/Mock路径下的文件全名
-<<<<<<< HEAD
+- status-code: Http response status code
+- mock-data-is-base64：如果data或者data-path提供的数据是二进制的base64字符串，设置此配置为true
 - status-code: Http response status code
 
 **⚠️⚠️⚠️注意⚠️⚠️⚠️**
@@ -120,7 +121,4 @@ response-body-json-xxx 类型的复写只有当响应体是Json格式时才会�
 **如果正则表达式或者替换的内容包含空格，请使用`\x20`表示，否则rewrite配置会解析异常**
 
 **如果正则表达式或者替换的内容包含空格，请使用`\x20`表示，否则rewrite配置会解析异常**
-=======
-- mock-data-is-base64：如果data或者data-path提供的数据是二进制的base64字符串，设置此配置为true
-- status-code: Http response status code
->>>>>>> 8e7578fe971701814ba4f929f475a7c1735922f5
+
