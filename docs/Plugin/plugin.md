@@ -22,8 +22,8 @@ sidebar_position: 1
 #!tag = 去广告,Youtube
 
 [Argument]
-arg1 = input,default-placehodler-content,tag=参数1的标题,desc=这是一个输入参数的说明
-arg2 = select,select1,select2,select2,tag=参数2的标题,desc=这是一个选择类型的参数说明
+arg1 = input,"default-placehodler-content",tag=参数1的标题,desc=这是一个输入参数的说明
+arg2 = select,"select1","select2","select2",tag=参数2的标题,desc=这是一个选择类型的参数说明
 arg3 = switch,true,tag=参数3的标题,desc=这是一个true、false的切换参数
 
 [General]
@@ -52,20 +52,20 @@ example.com
 - #!author：插件作者
 - #!homepage：插件的主页
 - #!icon：插件图标链接
-- #!system：支持的系统版本，没有表示iOS、tvOS、macOS都支持
-- #!system_version：支持的最低系统版本，目前仅支持iOS，没有表示支持所有
+- #!system：支持的系统版本，没有表示iOS、tvOS、macOS都支持，忽略大小写
+- #!system_version：支持的最低系统版本，目前仅支持iOS，没有表示支持所有，如`15.0`
 - #!loon_version：支持的loon的最低版本，格式为 `3.2.1(733)`，大版本+build版本号，没有表示支持所有
 - #!tag：用作分类的标签
 
 ## [Argument]（build 733+）
 声明插件中的脚本使用的参数，会根据配置显示在插件的UI上面，具体配置格式如下
 ```
-参数变量名 = 类型,参数值,tag=参数在UI上显示的名字,desc=参数在UI上显示详细介绍
+参数变量名 = 类型,"参数值1","参数值2",tag=参数在UI上显示的名字,desc=参数在UI上显示详细介绍
 ```
 类型有以下三种：
-- input：需要用户在UI界面输入的内容，后面的参数值为默认内容，可以不设置
-- select：需要用户选择的内容，默认选择后续配置的第一个值
-- switch：在UI上显示未一个切换开关，后面的参数值为默认配置，不设置默认`false`
+- input：需要用户在UI界面输入的内容，后面的参数值为默认内容（参数值请使用双引号包裹），可以不设置
+- select：需要用户选择的内容（每个可选值请使用双引号包裹），默认选择后续配置的第一个值
+- switch：在UI上显示未一个切换开关，后面第一个参数值为默认配置，不设置默认`false`
 
 ### 参数使用说明
 参数通过在脚本配置中`argument`参数进行传入，如`argument=[{arg1},{arg2},{arg3}]`，表示将这个三个参数全部传入脚本，脚本中通过变量`$argument.arg1`进行获取。
