@@ -70,7 +70,7 @@ example.com
 ### 参数使用说明
 - 参数通过在脚本配置中`argument`参数进行传入，如`argument=[{arg1},{arg2},{arg3}]`，表示将这个三个参数全部传入脚本，脚本中通过变量`$argument.arg1`进行获取。
 - cron类型的脚本，通过引用参数自定义cron，如`cron {arg1} script-path=https://example.com.run.js,timeout = 300,tag=自动运行,argument=[{arg2}]`，**此处引用的参数如果cron格式异常，脚本将无法执行**
-- 通过引用参数控制脚本的启用和禁用，如`http-request ^https?:\/\/(www.)?(example)\.com script-path=localscript.js,tag = requestScript,requires-body = true,enabel={arg1}`，**此处引用的参数类型只能为switch，否则视为true**
+- 通过引用参数控制脚本的启用和禁用，如`http-request ^https?:\/\/(www.)?(example)\.com script-path=localscript.js,tag = requestScript,requires-body = true,enable={arg1}`，**此处引用的参数类型只能为switch，否则视为true**
 
 
 ## 插件中规则的策略
