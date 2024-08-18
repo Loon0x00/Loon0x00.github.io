@@ -5,7 +5,7 @@
 <meta name="generator" content="Docusaurus v3.1.1">
 <title data-rh="true">插件 | Powerful Network Toolbox for iOS &amp; tvOS</title><meta data-rh="true" name="viewport" content="width=device-width,initial-scale=1"><meta data-rh="true" name="twitter:card" content="summary_large_image"><meta data-rh="true" property="og:image" content="https://loon0x00.github.io/img/loon.png"><meta data-rh="true" name="twitter:image" content="https://loon0x00.github.io/img/loon.png"><meta data-rh="true" property="og:url" content="https://loon0x00.github.io/docs/Plugin/"><meta data-rh="true" property="og:locale" content="en"><meta data-rh="true" name="docusaurus_locale" content="en"><meta data-rh="true" name="docsearch:language" content="en"><meta data-rh="true" name="docusaurus_version" content="current"><meta data-rh="true" name="docusaurus_tag" content="docs-default-current"><meta data-rh="true" name="docsearch:version" content="current"><meta data-rh="true" name="docsearch:docusaurus_tag" content="docs-default-current"><meta data-rh="true" property="og:title" content="插件 | Powerful Network Toolbox for iOS &amp; tvOS"><meta data-rh="true" name="description" content="插件是规则、复写、脚本的集合，相当于一个子配置，常常用来代表一个扩展功能。"><meta data-rh="true" property="og:description" content="插件是规则、复写、脚本的集合，相当于一个子配置，常常用来代表一个扩展功能。"><link data-rh="true" rel="icon" href="/img/favicon.png"><link data-rh="true" rel="canonical" href="https://loon0x00.github.io/docs/Plugin/"><link data-rh="true" rel="alternate" href="https://loon0x00.github.io/docs/Plugin/" hreflang="en"><link data-rh="true" rel="alternate" href="https://loon0x00.github.io/docs/Plugin/" hreflang="x-default"><link rel="alternate" type="application/rss+xml" href="/blog/rss.xml" title="Powerful Network Toolbox for iOS &amp; tvOS RSS Feed">
 <link rel="alternate" type="application/atom+xml" href="/blog/atom.xml" title="Powerful Network Toolbox for iOS &amp; tvOS Atom Feed"><link rel="stylesheet" href="/assets/css/styles.37684ad6.css">
-<script src="/assets/js/runtime~main.8ff49981.js" defer="defer"></script>
+<script src="/assets/js/runtime~main.8149ed2b.js" defer="defer"></script>
 <script src="/assets/js/main.d8f97c6f.js" defer="defer"></script>
 </head>
 <body class="navigation-with-keyboard">
@@ -39,7 +39,7 @@
 <ul>
 <li>参数通过在脚本配置中<code>argument</code>参数进行传入，如<code>argument=[{arg1},{arg2},{arg3}]</code>，表示将这个三个参数全部传入脚本，脚本中通过变量<code>$argument.arg1</code>进行获取。</li>
 <li>cron类型的脚本，通过引用参数自定义cron，如<code>cron {arg1} script-path=https://example.com.run.js,timeout = 300,tag=自动运行,argument=[{arg2}]</code>，<strong>此处引用的参数如果cron格式异常，脚本将无法执行</strong></li>
-<li>通过引用参数控制脚本的启用和禁用， 如<code>http-request ^https?:\/\/(www.)?(example)\.com script-path=localscript.js,tag = requestScript,requires-body = true,enabel={arg1}</code>，<strong>此处引用的参数类型只能为switch，否则视为true</strong></li>
+<li>通过引用参数控制脚本的启用和禁用， 如<code>http-request ^https?:\/\/(www.)?(example)\.com script-path=localscript.js,tag = requestScript,requires-body = true,enable={arg1}</code>，<strong>此处引用的参数类型只能为switch，否则视为true</strong></li>
 </ul>
 <h2 class="anchor anchorWithStickyNavbar_LWe7" id="插件中规则的策略">插件中规则的策略<a href="#插件中规则的策略" class="hash-link" aria-label="Direct link to 插件中规则的策略" title="Direct link to 插件中规则的策略">​</a></h2>
 <p>插件内的规则指向的策略只能有如下三种，当规则不指定策略时，会默认使用DIRECT</p>
