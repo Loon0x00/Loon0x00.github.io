@@ -72,7 +72,7 @@ http-response ^https?:\/\/(www.)?(example)\.com script-path=https://example.com/
 
 ### 配置语法
 ```
-cron "0 8 * * *" script-path=cron.js,tag = cronScript,enable=true,timeout = 300,argument = "1234",enable=true
+cron "0 8 * * *" script-path=cron.js,tag = cronScript,timeout = 300,argument = "1234",enable=true
 ```
 脚本默认执行超时时间200s，此类脚本中可以使用如下变量：
 - 所有[Script API](./script_api.md)

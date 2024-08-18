@@ -58,7 +58,7 @@ example.com
 - #!tag：用作分类的标签
 
 ## [Argument]（build 733+）
-声明插件中的脚本使用的参数，会根据配置显示在插件的UI上面，具体配置格式如下
+声明插件中的脚本、复写使用的参数，会根据配置显示在插件的UI上面，具体配置格式如下
 ```
 参数变量名 = 类型,"参数值1","参数值2",tag=参数在UI上显示的名字,desc=参数在UI上显示详细介绍
 ```
@@ -68,7 +68,9 @@ example.com
 - switch：在UI上显示未一个切换开关，后面第一个参数值为默认配置，不设置默认`false`
 
 ### 参数使用说明
-参数通过在脚本配置中`argument`参数进行传入，如`argument=[{arg1},{arg2},{arg3}]`，表示将这个三个参数全部传入脚本，脚本中通过变量`$argument.arg1`进行获取。
+- 参数通过在脚本配置中`argument`参数进行传入，如`argument=[{arg1},{arg2},{arg3}]`，表示将这个三个参数全部传入脚本，脚本中通过变量`$argument.arg1`进行获取。
+- cron类型的脚本，通过引用参数自定义cron，如`cron {arg1} script-path=https://example.com.run.js,timeout = 300,tag=自动运行,argument=[{arg2}]`，**此处引用的参数如果cron格式异常，脚本将无法执行**
+- 通过引用参数控制脚本的启用和禁用，如`http-request ^https?:\/\/(www.)?(example)\.com script-path=localscript.js,tag = requestScript,requires-body = true,enabel={arg1}`，**此处引用的参数类型只能为switch，否则视为true**
 
 
 ## 插件中规则的策略

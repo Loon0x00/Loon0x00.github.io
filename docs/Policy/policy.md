@@ -29,7 +29,7 @@ DOMAIN,apple.com,DIRECT
 顾名思义就是不将流量发送到任何服务器，一般用于去广告
 
 为了更好的适应不同类型的请求，Loon提供了以下几种拒绝策略
-- REJECT (返回200 响应空的响应体)
+- REJECT (返回404和空响应体)
 - REJECT-IMG (返回200和一个 1px GIF 的响应体)
 - REJECT-DICT (返回200和内容为空的 JSON 的响应体)
 - REJECT-ARRY (返回200和一个内容为空的 JSON 数组)
