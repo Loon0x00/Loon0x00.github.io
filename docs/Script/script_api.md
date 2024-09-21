@@ -6,6 +6,7 @@ sidebar_position: 2
 
 ## 基础API
 `console.log()`: 打印内容，参数为任意类型
+
 `setTimeout(callback, mis, ...vars)`: 倒计时mis**毫秒**后执行callback，**注意：该方法是异步方法，不会阻断当前执行逻辑，请在callback任务执行完成后再调用$done()释放脚本资源**
 
 ```
