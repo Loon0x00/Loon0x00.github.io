@@ -4,6 +4,24 @@ sidebar_position: 2
 
 # Script API
 
+## 基础API
+`console.log()`: 打印内容，参数为任意类型
+`setTimeout(callback, mis, ...vars)`: 倒计时mis**毫秒**后执行callback，**注意：该方法是异步方法，不会阻断当前执行逻辑，请在callback任务执行完成后再调用$done()释放脚本资源**
+
+```
+setTimeout(function() {
+    console.log("hello world");//这里不会执行，因为setTimeout调用后会立即执行$done()，导致脚本引擎被释放
+}, 1000);
+$done();
+```
+
+```
+setTimeout(function() {
+    console.log("hello world");//这里会正确打印"hello world"
+	$done();
+}, 1000);
+```
+
 ## 基本信息
 - **$loon**
 
