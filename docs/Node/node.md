@@ -72,14 +72,17 @@ http2 = http,example.com,80,username,"password"
 
 #https
 # 节点名称 = 协议，服务器地址，端口，加密方式，密码，skip-cert-verify=是否跳过证书校验（默认否），sni=SNI，tls-pubkey-sha256=服务器证书公钥的SHA256指纹，tls-cert-sha256=服务器证书的SHA256指纹
-https1 = https,example.com,443
-https2 = https,example.com,443,username,"password"
+https1 = https,example.com,8080
+# 如果username中包含英文逗号，请使用双引号包裹username
+https2 = https,example.com,8080,"user,name","password"
 https3 = https,example.com,443,username,"password",skip-cert-verify=true,sni=example.com,tls-pubkey-sha256=	
 a1eab144ec9186933ef4ffd56fab7e3681dcd94a1ab7a0ca522a38f9ed8ebe1b,tls-cert-sha256=377A27032578E64BF5F8CA5E90192E0DB2DCD53B275D4E53BAA50307C51C189E
 
 #socks5
 # 节点名称 = 协议，服务器地址，端口，加密方式，密码，skip-cert-verify=是否跳过证书校验（默认否），sni=SNI，tls-pubkey-sha256=服务器证书公钥的SHA256指纹，tls-cert-sha256=服务器证书的SHA256指纹，udp=是否在UDP中使用（需要节点支持）
 socks5 = socks5,example.com,443,username,"password",skip-cert-verify=true,sni=example.com,udp=true
+# 如果username中包含英文逗号，请使用双引号包裹username
+socks5 = socks5,example.com,8080,"user,name","password"
 
 #vmess+tcp
 # 节点名称 = 协议，服务器地址，端口，加密方式，UUID，transport(传输方式)=tcp，alterId=alterId（默认0，表示开启aead），udp=是否在UDP中使用（需要节点支持）
