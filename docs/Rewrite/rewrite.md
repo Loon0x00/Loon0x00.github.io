@@ -74,8 +74,9 @@ Loon的复写对一个HTTP/S的两侧进行作用，请求侧和响应侧，两�
 ^http://example.com request-body-json-add data.apps[0] {"appName":"loon","appVersion":"3.2.1"} data.category tool
 ^http://example.com request-body-json-replace data.ad {}
 ^http://example.com request-body-json-del data.ad
+^http://example.com request-body-json-jq 'del(.data.ad)'
 ```
-request-body-json-xxx 类型的复写只有当请求体是Json格式时才会有效，提供一个定位到要处理的json对象的keypath即可添加、删除、替换相关json对象，keypath采用点分式，如 `data.apps[0].appname`,`[0]`表示数组第一个对象，如果keypath无法定位到json对象的子对象，或者数组越界，keypath无效。
+request-body-json-xxx 类型的复写只有当请求体是Json格式时才会有效，提供一个定位到要处理的json对象的keypath即可添加、删除、替换相关json对象，keypath采用点分式，如 `data.apps[0].appname`,`[0]`表示数组第一个对象，如果keypath无法定位到json对象的子对象，或者数组越界，keypath无效。request-body-json-jq 使用jq表达式来修改json数据，使用单引号包裹jq表达式，jq语法详见：https://jqlang.github.io/jq/tutorial/
 
 ## Mock Request Body
 此类复写使用一个假数据模拟 Http request body
@@ -106,8 +107,9 @@ request-body-json-xxx 类型的复写只有当请求体是Json格式时才会有
 ^http://example.com response-body-json-add data.apps[0] {"appName":"loon","appVersion":"3.2.1"} data.category tool
 ^http://example.com response-body-json-replace data.ad {}
 ^http://example.com response-body-json-del data.ad
+^http://example.com response-body-json-jq 'del(.data.ad)'
 ```
-response-body-json-xxx 类型的复写只有当响应体是Json格式时才会有效，提供一个定位到需要处理的json对象的keypath即可添加、删除、替换相关json对象，keypath采用点分式，如 `data.apps[0].appname`,`[0]`表示数组第一个对象，如果keypath无法定位到json对象的子对象，或者数组越界，keypath无效。
+response-body-json-xxx 类型的复写只有当响应体是Json格式时才会有效，提供一个定位到需要处理的json对象的keypath即可添加、删除、替换相关json对象，keypath采用点分式，如 `data.apps[0].appname`,`[0]`表示数组第一个对象，如果keypath无法定位到json对象的子对象，或者数组越界，keypath无效。response-body-json-jq 使用jq表达式来修改json数据，使用单引号包裹jq表达式，jq语法详见：https://jqlang.github.io/jq/tutorial/
 
 ## Mock Request Body
 此类复写立即返回一个 Http request body

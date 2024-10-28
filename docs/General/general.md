@@ -35,11 +35,24 @@ DNS over HTTPS服务器，用,隔开多个服务器
 ```
 doh3-server = h3://223.6.6.6/dns-query
 ```
-## ipv6
-是否允许IPV6的请求，开启后会进行DNS AAAA记录查询，并且优先使用IPV6的IP
+## ipv6 
+**3.2.3+ build(754) 开始弃用**
+
+~~是否允许IPV6的请求，开启后会进行DNS AAAA记录查询，并且优先使用IPV6的IP~~
+
+## ip-mode
+**3.2.3+ build(754)**
+
+目前支持以下类型
+- ipv4-only: 只使用 IPv4 进行请求，不发起 AAAA 的 DNS 查询，拒绝所有 IPv6 连接
+- dual: 并发发起 A 和 AAAA 的 DNS 查询，优先使用响应速度更快的结果，不判断是否是IPv4或者IPv6
+- ipv4-preferred: 并发发起 A 和 AAAA 的 DNS 查询，优先使用 IPv6 结果，如无 IPv6 记录则切换到 IPv4 结果
+- ipv6-Preferred: 并发发起 A 和 AAAA 的 DNS 查询，优先使用 IPv4 结果，如无 IPv4 记录则切换到 IPv6 结果
+
 ```
-ipv6 = true
+ip-mode = dual
 ```
+
 ## allow-wifi-access
 是否开启局域网代理访问
 ```
@@ -119,7 +132,11 @@ disable-udp-ports = 443,80
 disable-stun = true
 ```
 ## geoip-url
-自定义geoip数据库的url
+自定义geoip数据库的下载地址
+
+## ipasn-url
+**3.2.3+ build(754)**
+自定义asn数据库的下载地址
 
 ## udp-fallback-mode
 **3.2.0+ build(702)**
