@@ -87,7 +87,7 @@ request-body-json-xxx 类型的复写只有当请求体是Json格式时才会有
 ```
 - data-type: body的类型，`json`,`text`,`css`,`html`,`javascript`,`plain`,`png`,`gif`,`jpeg`,`tiff`,`svg`,`mp4`,`form-data`
 - data: body的值，用双引号包裹，**由于data会加载到内存中，建议采用data-path的方式配置中大型的Mock Data**
-- data-path: body的文件路径，用双引号包裹，可以是url，也可以是iClcoud/Mock路径下的文件全名
+- data-path: body的文件路径，用双引号包裹，可以是url，也可以是iCloud/Mock路径下的文件全名
 - mock-data-is-base64：如果data或者data-path提供的数据是二进制的base64字符串，设置此配置为true
 
 ## Response Header 类型复写 (build 729+)

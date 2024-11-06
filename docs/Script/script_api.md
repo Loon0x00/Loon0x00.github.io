@@ -110,7 +110,7 @@ setTimeout(function() {
 
 - **$notification**
 
-`$notification.post(title,subtitle,content,[attach])`: 发起一个ios的本地通知，前三个参数分别为标题、副标题、通知内容，都为String类型，attach为可选内容，最为通知的附件，如通知带的一个图片\视频url或者点击通知时的触发的openurl
+`$notification.post(title,subtitle,content,attach=null,delay=0)`: 发起一个ios的本地通知，前三个参数分别为标题、副标题、通知内容，都为String类型，attach为可选内容，最为通知的附件，如通知带的一个图片\视频url或者点击通知时的触发的openurl，delay为延迟多少时间发起通知，单位ms，默认0ms
 ```javascript
 //当attach为一个字符串时，表示点击通知的跳转链接
 $notification.post("title","subtitle","content","loon://switch")
@@ -156,7 +156,8 @@ response: js对象
         content-length:200
     }
 }
-data: String类型，响应body
+data: body,//响应body，请求的binary-mode=true时为二进制，否则为String类型
+isBase64Str: base64String//如果响应body无法转为string，请求参数binary-mode=false，那么会自动将data转为base64的字符串，isBase64Str=true
 
 ```
 
