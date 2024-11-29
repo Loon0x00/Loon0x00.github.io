@@ -103,6 +103,17 @@ ssid-trigger = "loon-wifi5g":DIRECT,"cellular":PROXY,"default":RULE
 ```
 real-ip = *.apple.com,*.icloud.com
 ```
+
+## hijack-dns 
+## (build 789+)
+有些app会自己使用自定义的DNS over UDP来解析IP，可以配置相关IP:端口来劫持这些查询，并返回fakeip的响应
+```
+// *:53 表示所有53端口
+// *:0 所有
+// 8.8.8.8 所有8.8.8.8的查询
+hijack-dns = *:53,8.8.8.8
+```
+
 ## interface-mode
 指定流量使用哪个网络接口进行转发，目前包含三种模式:
 - Auto: 系统自动分配
@@ -113,9 +124,9 @@ real-ip = *.apple.com,*.icloud.com
 interface-mode = Performace
 ```
 
-
 ## force-http-engine-hosts
-有些app使用原始的tcp来进行HTTP请求，此参数会强制Loon将原始TCP请求视为HTTP请求处理，以使所有高级功能可用，例如抓包、复写和脚本处理等。为了性能考虑，Loon默认只会处理80端口的这些原始TCP请求。其他端口需要在这里指定相关的域名或者端口。
+**3.2.3+ build(787) 开始弃用**
+~~ 有些app使用原始的tcp来进行HTTP请求，此参数会强制Loon将原始TCP请求视为HTTP请求处理，以使所有高级功能可用，例如抓包、复写和脚本处理等。为了性能考虑，Loon默认只会处理80端口的这些原始TCP请求。其他端口需要在这里指定相关的域名或者端口。~~
 ```
 # :8080，表示解析所有8080端口，0表示解析所有端口
 # 通配符域名，解析所有端口下的相关域名
