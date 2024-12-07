@@ -111,8 +111,8 @@ request-body-json-xxx 类型的复写只有当请求体是Json格式时才会有
 ```
 response-body-json-xxx 类型的复写只有当响应体是Json格式时才会有效，提供一个定位到需要处理的json对象的keypath即可添加、删除、替换相关json对象，keypath采用点分式，如 `data.apps[0].appname`,`[0]`表示数组第一个对象，如果keypath无法定位到json对象的子对象，或者数组越界，keypath无效。response-body-json-jq 使用jq表达式来修改json数据，使用单引号包裹jq表达式，jq语法详见：https://jqlang.github.io/jq/tutorial/
 
-## Mock Request Body
-此类复写立即返回一个 Http request body
+## Mock Response Body
+此类复写立即返回一个 Http response body
 ```
 ^http://example.com mock-response-body data-type=text data="" status-code=200
 ^http://example.com mock-response-body data-type=json data-path=response_body.json status-code=200

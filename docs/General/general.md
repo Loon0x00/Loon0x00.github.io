@@ -106,6 +106,7 @@ real-ip = *.apple.com,*.icloud.com
 
 ## hijack-dns 
 **3.2.5 (build 789+)**
+
 有些app会自己使用自定义的DNS over UDP来解析IP，可以配置相关IP:端口来劫持这些查询，并返回fakeip的响应
 ```
 // *:53 表示所有53端口
