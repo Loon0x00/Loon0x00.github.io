@@ -156,8 +156,7 @@ response: js对象
         content-length:200
     }
 }
-data: body,//响应body，请求的binary-mode=true时为二进制，否则为String类型
-isBase64Str: base64String//如果响应body无法转为string，请求参数binary-mode=false，那么会自动将data转为base64的字符串，isBase64Str=true
+data: body,//响应body，请求的binary-mode=true时或者body无法转化为UTF8的字符串是为二进制，否则为String类型
 
 ```
 
