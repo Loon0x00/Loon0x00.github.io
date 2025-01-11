@@ -20,8 +20,12 @@ Subscription-Userinfo:upload=1111;download=111;total=123456;expire=1614527045
 代理服务协议指的是在进行网络传输的过程中客户端和服务端需要遵循的一种数据组装格式，只有服务端和客户端使用相同的协议，两者才能进行正常的数据交互，我们每天在网络中接触到的协议有HTTP，HTTPS等
 
 ### Loon支持以下协议
-- ShadowSocks
+- ShadowSocks (stream/aead/2022)
+    - ShadowSocks + shadow-tls2/3
+    - ShadowSocks + simpleObfs
+    - ShadowSocks + simpleObfs + shadow-tls2/3
 - ShadowSocksR
+    - ShadowSocksR + shadow-tls2/3
 - VMESS
     - VMESS + TLS
     - VMESS + WebSocket
@@ -49,9 +53,10 @@ Subscription-Userinfo:upload=1111;download=111;total=123456;expire=1614527045
 如果要在配置文件中手动添加、修改单个节点，请遵从下面的格式
 ```
 #ss
-# 节点名称 = 协议，服务器地址，端口，加密方式，密码，fast-open=是否开启fast open（需要节点支持），udp=是否在UDP中使用（需要节点支持）
+# 节点名称 = 协议，服务器地址，端口，加密方式，密码，fast-open=是否开启fast open（需要节点支持），udp=是否在UDP中使用（需要节点支持）,udp-port=shadow-tls由于暂时不支持udp转发，这里填写原ss 端口用作UDP转发
 ss1 = Shadowsocks,example.com,443,aes-128-gcm,"password",fast-open=false,udp=true
 ss2 = Shadowsocks,example2.com,443,chacha20,"password",fast-open=true,udp=true
+ss3 = Shadowsocks,example2.com,443,2022-blake3-aes-128-gcm,"MjdlZmY4YWIyZDU0OGNkNw==:YmY2N2QzZjctMjYxMi00MA==",fast-open=true,udp=true,shadow-tls-password=1,shadow-tls-sni=douyin.com,shadow-tls-version=3,udp-port=8396
 
 #ss+simple obfs
 # 节点名称 = 协议，服务器地址，端口，加密方式，密码，混淆方式=http|tls，obfs-host=混淆host，obfs-uri=混淆路径，fast-open=是否开启fast open（需要节点支持），udp=是否在UDP中使用（需要节点支持）
