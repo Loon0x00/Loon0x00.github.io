@@ -35,6 +35,7 @@ Subscription-Userinfo:upload=1111;download=111;total=123456;expire=1614527045
 - VLESS
     - VLESS + WebSocket
     - VLESS + HTTP
+    - VLESS + xtls-rprx-vision + reality
 - Trojan
     - Trojan + WebSocket
     - Trojan + HTTP
@@ -136,6 +137,10 @@ VLESS5 = VLESS,example.com,10086,"52396e06-041a-4cc2-be5c-8525eb457809",transpor
 #VLESS+http+tls
 # 节点名称 = 协议，服务器地址，端口，UUID，transport(传输方式)=http，path=httpheader中的path，host=httpheader的host，over-tls=是否启用TLS，sni=SNI，skip-cert-verify=是否跳过证书校验（默认否），tls-pubkey-sha256=服务器证书公钥的SHA256指纹，tls-cert-sha256=服务器证书的SHA256指纹，udp=是否在UDP中使用（需要节点支持）
 VLESS6 = VLESS,example.com,10086,"52396e06-041a-4cc2-be5c-8525eb457809",transport=http,path=/,host=v3-dy-y.ixigua.com,over-tls=true,sni=example.com,skip-cert-verify=true,udp=true
+
+#VLESS + xtls-rprx-vision + reality
+# 节点名称 = 协议，服务器地址，端口，UUID，transport(传输方式)=tcp，flow=目前固定是xtls-rprx-vision，public-key=reality的服务器公钥，sni=对应服务端的serverName
+VLESS6 = VLESS,192.168.2.11,2345,"ae521383-9375-2e0d-c347-48cf3d98eb6e",transport=tcp,flow=xtls-rprx-vision,public-key="LgJ9bNTyUqBLFkDA12-QgEL7c1yQ1ztk-V1Q-3OLXSk",short-id=164168844958a16d,udp=true,over-tls=true,sni=douyin.com,skip-cert-verify=true
 
 #trojan
 # 节点名称 = 协议，服务器地址，端口，alpn=tls扩展，skip-cert-verify=是否跳过证书校验（默认否），sni=SNI，udp=是否在UDP中使用（需要节点支持），tls-pubkey-sha256=服务器证书公钥的SHA256指纹，tls-cert-sha256=服务器证书的SHA256指纹
