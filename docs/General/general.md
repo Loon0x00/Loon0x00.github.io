@@ -83,8 +83,9 @@ internet-test-url = http://wifi.vivo.com.cn/generate_204
 ```
 test-timeout = 5
 ```
-## switch-node-after-failure-times
-一个节点连接失败几次后会进行节点切换，默认3次
+## ~~switch-node-after-failure-times~~
+**已弃用，目前会自动检测节点可用性，根据上下文自动切换**
+~~一个节点连接失败几次后会进行节点切换，默认3次~~
 ```
 switch-node-after-failure-times = 2
 ```
@@ -125,7 +126,7 @@ hijack-dns = *:53,8.8.8.8
 interface-mode = Performace
 ```
 
-## force-http-engine-hosts
+## ~~force-http-engine-hosts~~
 **3.2.3+ build(787) 开始弃用**
 
 ~~有些app使用原始的tcp来进行HTTP请求，此参数会强制Loon将原始TCP请求视为HTTP请求处理，以使所有高级功能可用，例如抓包、复写和脚本处理等。为了性能考虑，Loon默认只会处理80端口的这些原始TCP请求。其他端口需要在这里指定相关的域名或者端口。~~
@@ -182,4 +183,13 @@ domain-reject-mode = DNS
 
 ```
 dns-reject-mode = LOOPBACKIP
+```
+
+## skip-first-packet
+**3.3.3+ build(888)**
+
+一般我们平常接触的客户端-服务器模型都是 客户端先发请求 → 服务器响应（典型如 HTTP、DNS、gRPC）。但存在一些协议/服务，在连接建立成功后是服务器先发数据，比如邮件协议族（SMTP、POP3、IMAP）、FTP、IRC、Telnet/老式交互协议。由于Loon会等待客户端第一个数据包后根据包中内容进行规则匹配，所以对这类服务处理可能存在异常。该参数是为了跳过解析第一个数据包，直接使用域名、IP、端口进行规则匹配后连接，然后接收服务器数据。如果遇到配置的域名跳过了第一个数据包，但实际是http/s，读取到第一个数据包后依然会再次使用url等信息匹配规则。默认非443和非80，都会尝试跳过检测，直接发起连接。
+
+```
+skip-first-packet = example.com:443,example2.com:80,:25  //:25表示任何域名下的25端口，域名支持带 * 的通配符
 ```
