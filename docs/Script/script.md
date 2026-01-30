@@ -22,11 +22,12 @@ http-request ^https?:\/\/(www.)?(example)\.com script-path=localscript.js,tag = 
     - `$request.method`: String类型，请求方法
     - `$request.headers`: js对象，请求头
     - `$request.body`: String或者Uint8Array类型，当`requires-body = true`时才有值，请求的body
+    - `$request.h2_trailers`: 开启 MitM over HTTP2 后请求中有 trailers 时会携带，仅在 `requires-body = true` 时有效（Loon build > 927）
 - `$response`: undefined
 - `$done()`方法参数说明：
     - `$done()`: 不传任何参数，表示放弃该请求，请求连接会直接断开
     - `$done({})`: 空js对象，请求继续，任何请求参数不会有任何变化
-    - `$done({url:"https://new.example.com/",headers:{},node:"HK"})`: url参数替换原来的url，headers替换原来的request headers，node参数表示该请求后续用指定的策略组（也可以是节点名称）进行请求（build 534版本开始适用）
+    - `$done({url:"https://new.example.com/",headers:{},h2_trailes:{},node:"HK"})`: url参数替换原来的url，headers替换原来的request headers，h2_trailes替换原来的请求 trailer，不传表示用原来的，node参数表示该请求后续用指定的策略组（也可以是节点名称）进行请求（build 534版本开始适用）
     - `$done({response:{
         status:200,
         headers:{},
@@ -51,19 +52,22 @@ http-response ^https?:\/\/(www.)?(example)\.com script-path=https://example.com/
     - `$request.method`: String类型，请求方法
     - `$request.headers`: js对象，请求头
     - `$request.body`: String或者Uint8Array类型，如果请求带有body，此参数才有值
+    - `$request.h2_trailers`: 开启 MitM over HTTP2 后请求中有 trailers 时会携带（Loon build > 927）
 - `$response`: http响应信息
     - `$response.status`: 响应状态
     - `$response.headers`: 响应头
     - `$response.body`: String或者Uint8Array类型，如果响应带有body，并且requires-body = true时此参数才有值
+    - `$response.h2_trailers`: 开启 MitM over HTTP2 后响应中有 trailers 时会携带，仅在 `requires-body = true` 时有效（Loon build > 927）
 - `$done()`方法参数说明：
     - `$done()`: 不传任何参数，表示放弃该请求，请求连接会直接断开
-    - `$done({})`: 空js对象，请求继续，任何请求参数不会有任何变化
+    - `$done({})`: 空js对象，响应继续，任何响应参数不会有任何变化
     - `$done({
         status:200,
         headers:{},
+        h2_trailers:{},
         body:""
     })`: 直接向该请求返回一个假的响应，body类型可以是String或者Uint8Array，**如果body的长度大于0，会自动计算headers中的content-length，content-encoding也会根据body类型自动生成**
-    **注意** 当$done()参数的对象中的response不包含headers或者body时，表示使用原响应的headers和body，如果要清除原请求的body时，参数的`body=""`即可，清除原headers的话`headers={}`
+    **注意** 当$done()参数的对象中的response不包含headers或者body时，表示使用原响应的headers和body，如果要清除原请求的body时，参数的`body=""`即可，清除原headers的话`headers={}`，清除h2_trailers的话`h2_trailers={}`
 
 ## cron
 - 根据设定的cron表达式定时触发脚本
