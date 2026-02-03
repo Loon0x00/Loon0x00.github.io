@@ -154,7 +154,10 @@ response: js对象
     status:200,
     headers:{
         content-length:200
-    }
+    },
+    h2_trailers:{
+        grpc-status: 0
+    }//h2_trailers需要（build 931+）
 }
 data: body,//响应body，请求的binary-mode=true时或者body无法转化为UTF8的字符串是为二进制，否则为String类型
 
