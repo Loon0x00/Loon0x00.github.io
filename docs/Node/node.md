@@ -44,6 +44,7 @@ Subscription-Userinfo:upload=1111;download=111;total=123456;expire=1614527045
 - Socks5
 - Wireguard
 - Hysteria2
+- AnyTLS(Build 945+)
 - Custom by JS
 
 **截止 3.2.1（727）Loon所支持的协议中仅 HTTP/S 和 Custom by JS 协议不支持UDP中继**
@@ -161,6 +162,10 @@ wireguardNode = wireguard,interface-ip=192.168.2.2,interface-ipV6=2402:4e00:1200
 # 节点名称 = 协议，服务器地址，端口，密码，skip-cert-verify=是否跳过证书校验（默认否），sni=SNI，tls-pubkey-sha256=服务器证书公钥的SHA256指纹，tls-cert-sha256=服务器证书的SHA256指纹，udp=是否在UDP中使用（需要节点支持），fast-open=是否开启fast open，salamander-password=salamander obfs的密码
 hysteria2Node = Hysteria2,example.com,9898,"password",skip-cert-verify=true,sni=example.com,udp=true,fast-open=true，salamander-password=password,udp=true
 
+#AnyTLS
+# 节点名称 = 协议，服务器地址，端口，密码，skip-cert-verify=是否跳过证书校验（默认否），sni=SNI，tls-pubkey-sha256=服务器证书公钥的SHA256指纹，tls-cert-sha256=服务器证书的SHA256指纹，udp=是否在UDP中使用（UDP Over TCP）
+anytlsNode = AnyTLS,example.com,8449,"password",skip-cert-verify=true,sni=example.com,udp=true,block-quic=false
+
 #js custom
 # 节点名称 = 协议，服务器地址，端口，script-path=脚本路径（本地脚本直接为文件名，远端脚本为url）
 jsHTTP = custom,192.168.1.139,6152,script-path=http.js
@@ -176,6 +181,7 @@ resource-parser = https://raw.githubusercontent.com/Peng-YM/Sub-Store/master/bac
 - sni: TLS握手时会传递给服务端，不填写时使用代理服务器主机名作为SNI
 - tls-cert-sha256: 用于SSL pinning，可使用openssl生成，skip-cert-verify = false时有效，tls-pubkey-sha256有值时，此项无效
 - tls-pubkey-sha256: 用于SSL pinning，可使用openssl生成，skip-cert-verify = false时有效
+- tls-profile: 指定 TLS 握手时的指纹（safari，chrome 等）（build 964+）
 ```
 //生成证书your-cert.pem的tls-cert-sha256
 openssl x509 -noout -fingerprint -sha256 -inform pem -in your-cert.pem
