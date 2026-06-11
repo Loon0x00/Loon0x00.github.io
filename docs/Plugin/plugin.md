@@ -20,6 +20,7 @@ sidebar_position: 1
 #!system_version = 15
 #!loon_version = 3.2.1(372)
 #!tag = 去广告,Youtube
+#!type = parser
 
 [Argument]
 arg1 = input,"default-placehodler-content",tag=参数1的标题,desc=这是一个输入参数的说明
@@ -56,6 +57,7 @@ example.com
 - #!system_version：支持的最低系统版本，目前仅支持iOS，没有表示支持所有，如`15.0`
 - #!loon_version：支持的loon的最低版本，格式为 `3.2.1(733)`，大版本+build版本号，没有表示支持所有
 - #!tag：用作分类的标签
+- #!type：插件类型，截止 3.5.0(969) 支持两种类型，分别是 parser，normal；parser 是专门给资源解析器使用的，会显示在订阅节点、订阅规则、订阅配置页面
 
 ## [Argument]（build 733+）
 声明插件中的脚本、复写使用的参数，会根据配置显示在插件的UI上面，具体配置格式如下
