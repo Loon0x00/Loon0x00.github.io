@@ -43,7 +43,7 @@ dns-server =
 http-response ^https?:\/\/example\.com\/conf\/server-mapping script-path = remove_ads.js, requires-body = true, tag = 移除广告,argument=[{arg1},{arg2},{arg3}]
 
 [mitm]
-example.com
+hostname = example.com
 ```
 
 ## 注释参数
