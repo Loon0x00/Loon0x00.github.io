@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkmy_website=self.webpackChunkmy_website||[]).push([[4],{2456:e=>{e.exports=JSON.parse('{"title":"Scripts","slug":"/category/\u811a\u672c","permalink":"/en/docs/category/\u811a\u672c","navigation":{"previous":{"title":"Rewrite (Legacy Syntax)","permalink":"/en/docs/Rewrite/"},"next":{"title":"Script Types","permalink":"/en/docs/Script/"}}}')}}]);

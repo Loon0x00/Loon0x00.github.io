@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+    <id>https://loon0x00.github.io/en/blog</id>
+    <title>Loon Blog</title>
+    <updated>2024-03-15T00:00:00.000Z</updated>
+    <generator>https://github.com/jpmonette/feed</generator>
+    <link rel="alternate" href="https://loon0x00.github.io/en/blog"/>
+    <subtitle>Loon Blog</subtitle>
+    <icon>https://loon0x00.github.io/en/img/favicon.png</icon>
+    <entry>
+        <title type="html"><![CDATA[Welcome]]></title>
+        <id>https://loon0x00.github.io/en/blog/welcome</id>
+        <link href="https://loon0x00.github.io/en/blog/welcome"/>
+        <updated>2024-03-15T00:00:00.000Z</updated>
+        <summary type="html"><![CDATA[欢迎来到Loon基地，这里将会发布Loon的使用教程、app公告、重要版本更新日志等。]]></summary>
+        <content type="html"><![CDATA[<p>欢迎来到Loon基地，这里将会发布Loon的使用教程、app公告、重要版本更新日志等。</p>]]></content>
+        <author>
+            <name>Loon0x00</name>
+            <uri>https://github.com/Loon0x00</uri>
+        </author>
+        <category label="hello" term="hello"/>
+    </entry>
+</feed>

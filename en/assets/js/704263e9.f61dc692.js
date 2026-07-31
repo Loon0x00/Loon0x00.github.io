@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkmy_website=self.webpackChunkmy_website||[]).push([[883],{2646:e=>{e.exports=JSON.parse('{"title":"Policies","slug":"/category/\u7b56\u7565","permalink":"/en/docs/category/\u7b56\u7565","navigation":{"previous":{"title":"Rule Subscriptions","permalink":"/en/docs/Rule/sub_rule"},"next":{"title":"Policies","permalink":"/en/docs/Policy/"}}}')}}]);

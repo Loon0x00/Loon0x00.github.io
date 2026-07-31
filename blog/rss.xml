@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/">
     <channel>
-        <title>Powerful Network Toolbox for iOS &amp; tvOS Blog</title>
+        <title>Loon Blog</title>
         <link>https://loon0x00.github.io/blog</link>
-        <description>Powerful Network Toolbox for iOS &amp; tvOS Blog</description>
+        <description>Loon Blog</description>
         <lastBuildDate>Fri, 15 Mar 2024 00:00:00 GMT</lastBuildDate>
         <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
         <generator>https://github.com/jpmonette/feed</generator>
-        <language>en</language>
+        <language>zh-Hans</language>
         <item>
             <title><![CDATA[Welcome]]></title>
             <link>https://loon0x00.github.io/blog/welcome</link>

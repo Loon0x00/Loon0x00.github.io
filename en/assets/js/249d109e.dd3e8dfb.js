@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkmy_website=self.webpackChunkmy_website||[]).push([[151],{4256:e=>{e.exports=JSON.parse('{"title":"DNS","slug":"/category/dns","permalink":"/en/docs/category/dns","navigation":{"previous":{"title":"Plugins","permalink":"/en/docs/Plugin/"},"next":{"title":"DNS","permalink":"/en/docs/DNS/"}}}')}}]);

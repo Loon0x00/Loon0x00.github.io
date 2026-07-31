@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkmy_website=self.webpackChunkmy_website||[]).push([[2566],{4381:e=>{e.exports=JSON.parse('{"title":"Rules","slug":"/category/\u89c4\u5219","permalink":"/en/docs/category/\u89c4\u5219","navigation":{"previous":{"title":"Node Filters","permalink":"/en/docs/Node/nodefilter"},"next":{"title":"Rules","permalink":"/en/docs/Rule/"}}}')}}]);

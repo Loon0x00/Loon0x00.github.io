@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+    <channel>
+        <title>Loon Blog</title>
+        <link>https://loon0x00.github.io/en/blog</link>
+        <description>Loon Blog</description>
+        <lastBuildDate>Fri, 15 Mar 2024 00:00:00 GMT</lastBuildDate>
+        <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
+        <generator>https://github.com/jpmonette/feed</generator>
+        <language>en</language>
+        <item>
+            <title><![CDATA[Welcome]]></title>
+            <link>https://loon0x00.github.io/en/blog/welcome</link>
+            <guid>https://loon0x00.github.io/en/blog/welcome</guid>
+            <pubDate>Fri, 15 Mar 2024 00:00:00 GMT</pubDate>
+            <description><![CDATA[欢迎来到Loon基地，这里将会发布Loon的使用教程、app公告、重要版本更新日志等。]]></description>
+            <content:encoded><![CDATA[<p>欢迎来到Loon基地，这里将会发布Loon的使用教程、app公告、重要版本更新日志等。</p>]]></content:encoded>
+            <category>hello</category>
+        </item>
+    </channel>
+</rss>
