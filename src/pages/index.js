@@ -10,25 +10,52 @@ import styles from './index.module.css';
 import bannerImg from '../../static/img/iPhonex.png';
 
 function HomepageHeader() {
-  const {siteConfig} = useDocusaurusContext();
+  const {i18n} = useDocusaurusContext();
+  const isEnglish = i18n.currentLocale === 'en';
+  const heroCopy = isEnglish
+    ? {
+        title: 'Powerful Network Toolbox for iOS & tvOS',
+        subtitle:
+          'Take control of your device network with flexible routing, encrypted DNS, traffic inspection, Rewrite, and script automation—all in one powerful toolbox.',
+      }
+    : {
+        title: '适用于 iOS 与 tvOS 的强大网络工具',
+        subtitle:
+          '通过灵活分流、加密 DNS、流量分析、Rewrite 与脚本自动化，全面掌控设备网络，让访问更高效、更安全。',
+      };
   return (
     <header className={clsx('hero hero--primary', styles.heroBanner)}>
       <div className={styles.container}>
         <div className={styles.appInfo}>
-          <Heading as="h1" className={styles.heroTitle + " hero__title"}>
-            {siteConfig.title}
+          <div className={styles.eyebrow}>
+            <span className={styles.eyebrowDot} />
+            LOON · NETWORK TOOLBOX
+          </div>
+          <Heading as="h1" className={clsx(styles.heroTitle, 'hero__title')}>
+            {heroCopy.title}
           </Heading>
-          <p className={styles.heroSubtitle+" hero__subtitle"}>{siteConfig.tagline}</p>
+          <p className={clsx(styles.heroSubtitle, 'hero__subtitle')}>
+            {heroCopy.subtitle}
+          </p>
           <div className={styles.buttons}>
             <Link
-              className="button button--secondary button--lg"
+              className={clsx(
+                'button button--lg',
+                styles.storeButton,
+              )}
               to="https://itunes.apple.com/in/app/id1373567447">
-              iOS & tvOS App Store
+              <span>iOS & tvOS App Store</span>
+              <span aria-hidden="true">→</span>
             </Link>
           </div>
         </div>
         <div className={styles.appImg}>
-          <img src ={bannerImg}></img>
+          <div className={styles.phoneGlow} />
+          <img
+            src={bannerImg}
+            alt="Loon app interface on iPhone"
+            className={styles.phoneImage}
+          />
         </div>
       </div>
     </header>
@@ -36,11 +63,15 @@ function HomepageHeader() {
 }
 
 export default function Home() {
-  const {siteConfig} = useDocusaurusContext();
+  const {siteConfig, i18n} = useDocusaurusContext();
+  const description =
+    i18n.currentLocale === 'en'
+      ? 'Manage, inspect, and refine network traffic on iOS and tvOS with Loon.'
+      : '使用 Loon 管理、检查和处理 iOS 与 tvOS 设备的网络流量。';
   return (
     <Layout
       title={`${siteConfig.title}`}
-      description="Employing Loon for effortless and secure Internet browsing by overseeing, administrating, and refining the entire device network.">
+      description={description}>
       <HomepageHeader />
       <main>
         <HomepageFeatures />

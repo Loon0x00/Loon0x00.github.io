@@ -2,8 +2,10 @@
 sidebar_position: 8
 ---
 
-# Final
-Final表示最后、兜底，即在没有匹配到配置的规则后，使用Final指定的策略
-```
-final,DIRECT
+# FINAL
+
+当其他规则都未命中时，使用 `FINAL` 指定的策略：
+
+```ini
+FINAL,DIRECT
 ```

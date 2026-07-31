@@ -1,0 +1,46 @@
+{
+  "version.label": {
+    "message": "Next",
+    "description": "The label for version current"
+  },
+  "sidebar.tutorialSidebar.category.节点": {
+    "message": "Nodes",
+    "description": "The label for category 节点 in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.节点.link.generated-index.description": {
+    "message": "Proxy nodes and supported protocols",
+    "description": "The generated-index page description for category 节点 in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.规则": {
+    "message": "Rules",
+    "description": "The label for category 规则 in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.策略": {
+    "message": "Policies",
+    "description": "The label for category 策略 in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.复写": {
+    "message": "Rewrite",
+    "description": "The label for category 复写 in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.脚本": {
+    "message": "Scripts",
+    "description": "The label for category 脚本 in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.插件": {
+    "message": "Plugins",
+    "description": "The label for category 插件 in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.DNS": {
+    "message": "DNS",
+    "description": "The label for category DNS in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.其他配置": {
+    "message": "General",
+    "description": "The label for category 其他配置 in sidebar tutorialSidebar"
+  },
+  "sidebar.tutorialSidebar.category.Scheme": {
+    "message": "URL Scheme",
+    "description": "The label for category Scheme in sidebar tutorialSidebar"
+  }
+}

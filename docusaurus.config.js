@@ -8,8 +8,8 @@ import {themes as prismThemes} from 'prism-react-renderer';
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'Powerful Network Toolbox for iOS & tvOS',
-  tagline: 'Employing Loon for effortless and secure Internet browsing by overseeing, administrating, and refining the entire device network.',
+  title: 'Loon',
+  tagline: '适用于 iOS 与 tvOS 的强大网络工具',
   favicon: 'img/favicon.png',
 
   // Set the production url of your site here
@@ -26,12 +26,19 @@ const config = {
   onBrokenLinks: 'throw',
   onBrokenMarkdownLinks: 'warn',
 
-  // Even if you don't use internationalization, you can use this field to set
-  // useful metadata like html lang. For example, if your site is Chinese, you
-  // may want to replace "en" with "zh-Hans".
   i18n: {
-    defaultLocale: 'en',
-    locales: ['en'],
+    defaultLocale: 'zh-Hans',
+    locales: ['zh-Hans', 'en'],
+    localeConfigs: {
+      'zh-Hans': {
+        label: '简体中文',
+        htmlLang: 'zh-Hans',
+      },
+      en: {
+        label: 'English',
+        htmlLang: 'en',
+      },
+    },
   },
 
   presets: [
@@ -72,9 +79,18 @@ const config = {
             type: 'docSidebar',
             sidebarId: 'tutorialSidebar',
             position: 'left',
-            label: 'Manual',
+            label: '文档',
           },
-          {to: '/blog', label: 'Tutorial', position: 'left'},
+          {
+            to: '/rewrite-builder',
+            label: 'Rewrite 生成器',
+            position: 'left',
+          },
+          {to: '/blog', label: '教程', position: 'left'},
+          {
+            type: 'localeDropdown',
+            position: 'right',
+          },
           {
             href: 'https://github.com/Loon0x00/LoonManual',
             label: 'GitHub',
@@ -86,16 +102,16 @@ const config = {
         style: 'dark',
         links: [
           {
-            title: 'Docs',
+            title: '文档',
             items: [
               {
-                label: 'Manual',
+                label: '使用手册',
                 to: '/docs/intro',
               },
             ],
           },
           {
-            title: 'Community',
+            title: '社区',
             items: [
               {
                 label: 'Telegram',
@@ -108,10 +124,10 @@ const config = {
             ],
           },
           {
-            title: 'More',
+            title: '更多',
             items: [
               {
-                label: 'Tutorial',
+                label: '教程',
                 to: '/blog',
               },
               {
@@ -121,7 +137,7 @@ const config = {
             ],
           },
         ],
-        copyright: `Copyright © ${new Date().getFullYear()} Loon Lab Limit. Built with Docusaurus.`,
+        copyright: `Copyright © ${new Date().getFullYear()} Loon Lab Limited. 由 Docusaurus 构建。`,
       },
       prism: {
         theme: prismThemes.github,

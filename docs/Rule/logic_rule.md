@@ -3,30 +3,35 @@ sidebar_position: 7
 ---
 
 # 逻辑规则
-使用或、与、非逻辑将多个规则合并成一个规则（3.1.7+）
 
-**如果逻辑规则里面有域名有IP，尽量把IP的子规则放在后面，防止不必要的DNS查询**
+逻辑规则使用与、或、非组合多个子规则，适用于 Loon 3.1.7 及以上版本。
 
-## AND
-多个子规则同时满足时才会匹配
+:::tip
 
-**AND,((子规则),(子规则)),PolicyName**
-```
-AND,((DOMAIN-SUFFIX,axample),(DEST-PORT,443),(GEOIP,CN)),DIRECT
-```
+同时包含域名和 IP 子规则时，建议把 IP 规则放在后面，减少不必要的 DNS 查询。
 
-## OR
-子规则满足一个时匹配
+:::
 
-**OR,((子规则),(子规则)),PolicyName**
-```
-OR,((DOMAIN-SUFFIX,axample),(DEST-PORT,443),(GEOIP,CN,no-resolve)),DIRECT
+## `AND`
+
+所有子规则都满足时匹配：
+
+```ini
+AND,((DOMAIN-SUFFIX,example.com),(DEST-PORT,443),(GEOIP,CN)),DIRECT
 ```
 
-## NOT
-子规则不满足时匹配，只有有一个子规则
+## `OR`
 
-**NOT,((子规则)),PolicyName**
+任一子规则满足时匹配：
+
+```ini
+OR,((DOMAIN-SUFFIX,example.com),(DEST-PORT,443),(GEOIP,CN,no-resolve)),DIRECT
 ```
-NOT,((AND,((DOMAIN-SUFFIX,axample),(DEST-PORT,443),(GEOIP,CN)))),DIRECT
+
+## `NOT`
+
+子规则不满足时匹配。`NOT` 只能包含一个子规则：
+
+```ini
+NOT,((AND,((DOMAIN-SUFFIX,example.com),(DEST-PORT,443),(GEOIP,CN)))),DIRECT
 ```

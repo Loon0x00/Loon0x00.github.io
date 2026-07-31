@@ -2,11 +2,12 @@
 sidebar_position: 6
 ---
 
-# 协议类规则
-根据请求的协议类型进行匹配（3.1.7+），目前支持`HTTP/HTTPS/TCP/QUIC/STUN/UDP`
+# 协议规则
 
+协议规则按请求的协议类型匹配，适用于 Loon 3.1.7 及以上版本。
 
-## PROTOCOL
-```
+支持 `HTTP`、`HTTPS`、`TCP`、`QUIC`、`STUN` 和 `UDP`。
+
+```ini
 PROTOCOL,STUN,REJECT
 ```

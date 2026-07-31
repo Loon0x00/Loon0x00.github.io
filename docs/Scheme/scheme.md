@@ -2,59 +2,51 @@
 sidebar_position: 1
 ---
 
-# Scheme 和统一链接
+# URL Scheme
 
-## Scheme
+URL Scheme 可以从浏览器或其他 App 打开 Loon 并执行指定操作。
 
-### 开启VPN 
+## 常用操作
+
+| 操作 | URL |
+|---|---|
+| 开启 VPN | `loon://on` |
+| 关闭 VPN | `loon://off` |
+| 编辑配置文件 | `loon://editconfig` |
+| 切换为全局直连 | `loon://flowmodel=direct` |
+| 切换为分流模式 | `loon://flowmodel=filter` |
+| 切换为全局代理 | `loon://flowmodel=proxy` |
+| 使用 TUN Only | `loon://proxymode=tun` |
+| 使用 HTTP Proxy & TUN | `loon://proxymode=mix` |
+| 更新所有订阅资源 | `loon://update?sub=all` |
+
+## 导入资源
+
+导入地址需要先进行 URL 编码，再替换下表中的 `encode(url)`。
+
+| 资源 | URL |
+|---|---|
+| 远程配置 | `loon://import?sub=encode(url)` |
+| 节点订阅 | `loon://import?nodelist=encode(url)` |
+| 规则订阅 | `loon://import?rules=encode(url)` |
+| 插件 | `loon://import?plugin=encode(url)` |
+| 图标集 | `loon://import?iconset=encode(url)` |
+| GeoIP 数据库 | `loon://import?geoip=encode(url)` |
+| 解析器 | `loon://import?parser=encode(url)` |
+
+## 通用链接
+
+网页无法直接使用自定义 Scheme 时，可以将 `loon://` 替换为：
+
+```text
+https://www.nsloon.com/openloon/
+```
+
+例如：
+
+```text
 loon://on
-### 关闭VPN
-loon://off
-### 编辑配置文件
-loon://editconfig
-### 切换流量模式为全局直连
-loon://flowmodel=direct
-### 切换流量模式为分流
-loon://flowmodel=filter
-### 切换流量模式为全局代理
-loon://flowmodel=proxy
-### 设置代理模式为TUN Only
-loon://proxymode=tun
-### 设置代理模式为HTTP Proxy & TUN
-loon://proxymode=mix
-### 安装远端配置文件
-loon://import?sub=encode(url)
-### 导入订阅节点
-loon://import?nodelist=encode(url)
-### 导入订阅规则
-loon://import?rules=encode(url)
-### 导入插件
-loon://import?plugin=encode(url)
-### 导入图标集
-loon://import?iconset=encode(url)
-### 导入geoip数据库
-loon://import?geoip=encode(url)
-### 导入解析器
-loon://import?parser=encode(url)
-### 更新所有订阅资源
-loon://update?sub=all
+https://www.nsloon.com/openloon/on
+```
 
-## 统一链接
-统一链接是为了能够在网页中点击链接直接跳转到app中的某个页面，不同链接的作用参考上面的scheme
-
-- https://www.nsloon.com/openloon/on
-- https://www.nsloon.com/openloon/off
-- https://www.nsloon.com/openloon/editconfig
-- https://www.nsloon.com/openloon/flowmodel=direct
-- https://www.nsloon.com/openloon/flowmodel=filter
-- https://www.nsloon.com/openloon/flowmodel=proxy
-- https://www.nsloon.com/openloon/proxymode=tun
-- https://www.nsloon.com/openloon/proxymode=mix
-- https://www.nsloon.com/openloon/import?sub=encode(url)
-- https://www.nsloon.com/openloon/import?nodelist=encode(url)
-- https://www.nsloon.com/openloon/import?rules=encode(url)
-- https://www.nsloon.com/openloon/import?plugin=encode(url)
-- https://www.nsloon.com/openloon/import?iconset=encode(url)
-- https://www.nsloon.com/openloon/import?geoip=encode(url)
-- https://www.nsloon.com/openloon/import?parser=encode(url)
-- https://www.nsloon.com/openloon/update?sub=all
+两者作用相同。

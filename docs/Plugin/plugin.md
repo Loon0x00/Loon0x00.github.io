@@ -3,29 +3,27 @@ sidebar_position: 1
 ---
 
 # 插件
-插件是规则、复写、脚本的集合，相当于一个子配置，常常用来代表一个扩展功能。
 
-## 插件可包含的配置模块
-```
-#!name= 插件名称
-#!desc= 这是一个带有配置项的插件，input代表输入，select代表选择（select的第一项为名称，后面为可选值），用户所填或者选择的值都可以在脚本中用$persistentStore.read进行读取，如$persistentStore.read(appName)
-#!author= 插件作者
-#!homepage= 插件首页，可在插件页面进行跳转
-#!icon= 插件的图标
-#!input = appName
-#!input = author
-#!select = appType,tool,social,health,sport
-#!select = price,0.99,1.99,4.99
+插件是一份可复用的子配置，可以包含规则、Rewrite、脚本、Host 和 MitM 等模块。
+
+## 完整示例
+
+```ini
+#!name = 示例插件
+#!desc = 展示插件信息和用户参数
+#!author = Loon
+#!homepage = https://example.com
+#!icon = https://example.com/icon.png
 #!system = iOS,iPadOS,tvOS,macOS
 #!system_version = 15
-#!loon_version = 3.2.1(372)
-#!tag = 去广告,Youtube
-#!type = parser
+#!loon_version = 3.5.1(978)
+#!tag = 示例,工具
+#!type = normal
 
 [Argument]
-arg1 = input,"default-placehodler-content",tag=参数1的标题,desc=这是一个输入参数的说明
-arg2 = select,"select1","select2","select2",tag=参数2的标题,desc=这是一个选择类型的参数说明
-arg3 = switch,true,tag=参数3的标题,desc=这是一个true、false的切换参数
+name = input,"Loon",tag=名称,desc=输入一个名称
+region = select,"CN","US","JP",tag=地区
+enabled = switch,true,tag=启用
 
 [General]
 bypass-tun =
@@ -33,53 +31,104 @@ skip-proxy =
 real-ip =
 dns-server =
 
-[rule]
+[Rule]
 
-[rewrite]
+[Rewrite]
 
-[host]
+[Host]
 
-[script]
-http-response ^https?:\/\/example\.com\/conf\/server-mapping script-path = remove_ads.js, requires-body = true, tag = 移除广告,argument=[{arg1},{arg2},{arg3}]
+[Script]
+http-response ^https?:\/\/example\.com\/conf\/server-mapping script-path=remove_ads.js,requires-body=true,tag=移除广告,argument=[{name},{region},{enabled}]
 
-[mitm]
+[Mitm]
 hostname = example.com
 ```
 
-## 注释参数
-以`#!`开头可以添加注释
-- #!name：插件名字
-- #!desc：插件的功能描述等
-- #!author：插件作者
-- #!homepage：插件的主页
-- #!icon：插件图标链接
-- #!system：支持的系统版本，没有表示iOS、tvOS、macOS都支持，忽略大小写
-- #!system_version：支持的最低系统版本，目前仅支持iOS，没有表示支持所有，如`15.0`
-- #!loon_version：支持的loon的最低版本，格式为 `3.2.1(733)`，大版本+build版本号，没有表示支持所有
-- #!tag：用作分类的标签
-- #!type：插件类型，截止 3.5.0(969) 支持两种类型，分别是 parser，normal；parser 是专门给资源解析器使用的，会显示在订阅节点、订阅规则、订阅配置页面
+## 插件信息
 
-## [Argument]（build 733+）
-声明插件中的脚本、复写使用的参数，会根据配置显示在插件的UI上面，具体配置格式如下
+以 `#!` 开头的字段用于描述插件：
+
+| 字段 | 说明 |
+|---|---|
+| `#!name` | 插件名称 |
+| `#!desc` | 功能说明 |
+| `#!author` | 作者 |
+| `#!homepage` | 主页地址 |
+| `#!icon` | 图标地址 |
+| `#!system` | 支持的系统，不区分大小写；未填写表示全部支持 |
+| `#!system_version` | 最低系统版本，如 `15.0` |
+| `#!loon_version` | 最低 Loon 版本，如 `3.5.1(978)` |
+| `#!tag` | 分类标签 |
+| `#!type` | 插件类型 |
+
+Loon 3.5.0 (969) 支持以下插件类型：
+
+- `normal`：普通插件。
+- `parser`：资源解析器，可在节点、规则和配置订阅页面中选择。
+
+## `[Argument]`
+
+适用于 Build 733 及以上版本。该模块声明需要用户填写或选择的参数，Loon 会自动生成对应界面。
+
+基本格式：
+
+```text
+参数名 = 控件类型,默认值或可选值,tag=标题,desc=说明
 ```
-参数变量名 = 类型,"参数值1","参数值2",tag=参数在UI上显示的名字,desc=参数在UI上显示详细介绍
+
+支持的控件：
+
+| 类型 | 说明 |
+|---|---|
+| `input` | 文本输入；默认值可省略 |
+| `select` | 单选列表；第一个值为默认值 |
+| `switch` | 开关；默认值为 `false` |
+
+```ini
+[Argument]
+name = input,"Loon",tag=名称
+region = select,"CN","US","JP",tag=地区
+enabled = switch,true,tag=启用
 ```
-类型有以下三种：
-- input：需要用户在UI界面输入的内容，后面的参数值为默认内容（参数值请使用双引号包裹），可以不设置
-- select：需要用户选择的内容（每个可选值请使用双引号包裹），默认选择后续配置的第一个值
-- switch：在UI上显示未一个切换开关，后面第一个参数值为默认配置，不设置默认`false`
 
-### 参数使用说明
-- 参数通过在脚本配置中`argument`参数进行传入，如`argument=[{arg1},{arg2},{arg3}]`，表示将这个三个参数全部传入脚本，脚本中通过变量`$argument.arg1`进行获取。
-- cron类型的脚本，通过引用参数自定义cron，如`cron {arg1} script-path=https://example.com.run.js,timeout = 300,tag=自动运行,argument=[{arg2}]`，**此处引用的参数如果cron格式异常，脚本将无法执行**
-- 通过引用参数控制脚本的启用和禁用，如`http-request ^https?:\/\/(www.)?(example)\.com script-path=localscript.js,tag = requestScript,requires-body = true,enable={arg1}`，**此处引用的参数类型只能为switch，否则视为true**
+### 在脚本中使用
 
+通过 `argument` 传入参数：
 
-## 插件中规则的策略
-插件内的规则指向的策略只能有如下三种，当规则不指定策略时，会默认使用DIRECT
-1. DIRECT
-2. REJECT类（REJECT，REJECT-IMG，REJECT-DICT，REJECT-ARRY，REJECT-DROP）
-3. PROXY，代表用户在进行插件配置时手动选择的策略组，如果用户指定了PROXY，但插件却没有进行配置，那最终将按照无法找到策略组的逻辑进行处理（即使用App全局中第一个节点）
+```ini
+http-request ^https:\/\/example\.com script-path=request.js,argument=[{name},{region},{enabled}]
+```
 
-## 插件推荐
-[Loon 插件仓库](https://github.com/Peng-YM/Loon-Gallery)(由热心网友整理提供)
+脚本中通过 `$argument.name`、`$argument.region` 和 `$argument.enabled` 读取。
+
+参数也可以用于 Cron 表达式：
+
+```ini
+cron {cronExpression} script-path=task.js,timeout=300,tag=自动运行
+```
+
+如果表达式格式无效，Cron 脚本不会执行。
+
+`switch` 参数可以控制脚本是否启用：
+
+```ini
+http-request ^https:\/\/example\.com script-path=request.js,enable={enabled}
+```
+
+### 在 Rewrite 中使用
+
+新版 Rewrite 使用 `${参数名}`，具体规则见 [Rewrite 变量](../Rewrite/rewrite_v2.md#插件参数)。
+
+## 插件规则可用策略
+
+插件中的规则只能使用以下策略：
+
+- `DIRECT`
+- `REJECT` 系列
+- `PROXY`
+
+规则未指定策略时默认使用 `DIRECT`。`PROXY` 表示由用户选择策略组；如果未配置，则按找不到策略组的默认逻辑处理。
+
+## 插件资源
+
+[Loon Gallery](https://github.com/Peng-YM/Loon-Gallery) 收录了社区维护的插件。

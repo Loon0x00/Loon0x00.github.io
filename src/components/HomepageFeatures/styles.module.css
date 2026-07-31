@@ -1,13 +1,226 @@
 .features {
-  display: flex;
-  align-items: center;
-  padding: 2rem 0;
-  width: 100%;
+  position: relative;
+  padding: clamp(5.5rem, 9vw, 8rem) 0;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 90% 15%, rgba(109, 93, 252, 0.07), transparent 22rem),
+    #fbfbfd;
 }
 
-.featureSvg {
-  margin-top: 20px;
-  margin-bottom: 20px;
-  height: 60px;
-  width: 60px;
+.sectionHeading {
+  max-width: 720px;
+  margin: 0 auto clamp(2.6rem, 5vw, 4rem);
+  text-align: center;
+}
+
+.sectionHeading > span {
+  display: inline-block;
+  margin-bottom: 0.85rem;
+  color: #6652e8;
+  font-size: 0.7rem;
+  font-weight: 790;
+  letter-spacing: 0.14em;
+}
+
+.sectionHeading h2 {
+  margin: 0;
+  color: #221f2f;
+  font-size: clamp(2.2rem, 4.7vw, 3.7rem);
+  font-weight: 770;
+  letter-spacing: -0.05em;
+  line-height: 1.06;
+  text-wrap: balance;
+}
+
+.sectionHeading p {
+  max-width: 650px;
+  margin: 1.15rem auto 0;
+  color: #6a6575;
+  font-size: 1.02rem;
+  line-height: 1.75;
+  text-wrap: pretty;
+}
+
+.featureGrid {
+  row-gap: 1.5rem;
+}
+
+.featureColumn {
+  display: flex;
+}
+
+.featureCard {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 290px;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 1.65rem;
+  overflow: hidden;
+  border: 1px solid #e8e5ef;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 16px 46px rgba(43, 36, 78, 0.055);
+  backdrop-filter: blur(12px);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.featureCard::after {
+  position: absolute;
+  right: -3.5rem;
+  bottom: -4.5rem;
+  width: 9rem;
+  height: 9rem;
+  border-radius: 50%;
+  background: rgba(109, 93, 252, 0.045);
+  content: '';
+  transition: transform 220ms ease;
+}
+
+.featureCard:hover {
+  transform: translateY(-5px);
+  border-color: rgba(109, 93, 252, 0.23);
+  box-shadow: 0 24px 60px rgba(43, 36, 78, 0.1);
+}
+
+.featureCard:hover::after {
+  transform: scale(1.18);
+}
+
+.iconWrap {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 3.6rem;
+  height: 3.6rem;
+  margin-bottom: 1.35rem;
+  place-items: center;
+  border: 1px solid rgba(109, 93, 252, 0.12);
+  border-radius: 15px;
+  background: linear-gradient(145deg, #f0edff, #faf9ff);
+  box-shadow: 0 10px 26px rgba(75, 59, 160, 0.08);
+}
+
+.featureIcon {
+  display: block;
+  width: 2rem;
+  height: 2rem;
+  object-fit: contain;
+}
+
+.featureContent {
+  position: relative;
+  z-index: 1;
+}
+
+.featureContent h3 {
+  margin: 0 0 0.75rem;
+  color: #2d2939;
+  font-size: 1.08rem;
+  font-weight: 730;
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+}
+
+.featureContent p {
+  margin: 0;
+  color: #6c6777;
+  font-size: 0.91rem;
+  line-height: 1.72;
+}
+
+[data-theme='dark'] .features {
+  background:
+    radial-gradient(circle at 90% 15%, rgba(109, 93, 252, 0.08), transparent 22rem),
+    #12111a;
+}
+
+[data-theme='dark'] .sectionHeading > span {
+  color: #afa4ff;
+}
+
+[data-theme='dark'] .sectionHeading h2 {
+  color: #f0edf5;
+}
+
+[data-theme='dark'] .sectionHeading p {
+  color: #aaa5b5;
+}
+
+[data-theme='dark'] .featureCard {
+  border-color: #302d3d;
+  background: rgba(27, 25, 36, 0.82);
+  box-shadow: none;
+}
+
+[data-theme='dark'] .featureCard:hover {
+  border-color: rgba(162, 150, 255, 0.28);
+  box-shadow: 0 20px 54px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme='dark'] .iconWrap {
+  border-color: rgba(162, 150, 255, 0.14);
+  background: linear-gradient(145deg, #28233d, #201e2d);
+  box-shadow: none;
+}
+
+[data-theme='dark'] .featureContent h3 {
+  color: #ebe7f1;
+}
+
+[data-theme='dark'] .featureContent p {
+  color: #aaa5b5;
+}
+
+@media (max-width: 996px) {
+  .features {
+    padding: 5.5rem 0;
+  }
+
+  .featureColumn {
+    --ifm-col-width: 50%;
+    flex-basis: 50%;
+    max-width: 50%;
+  }
+}
+
+@media (max-width: 640px) {
+  .features {
+    padding: 4.5rem 0;
+  }
+
+  .sectionHeading {
+    margin-bottom: 2.5rem;
+    padding: 0 0.5rem;
+  }
+
+  .sectionHeading h2 {
+    font-size: 2.15rem;
+  }
+
+  .sectionHeading p {
+    font-size: 0.94rem;
+  }
+
+  .featureColumn {
+    --ifm-col-width: 100%;
+    flex-basis: 100%;
+    max-width: 100%;
+  }
+
+  .featureCard {
+    min-height: 0;
+    padding: 1.4rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .featureCard,
+  .featureCard::after {
+    transition: none;
+  }
 }

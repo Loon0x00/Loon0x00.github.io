@@ -4,97 +4,125 @@ sidebar_position: 1
 
 # 脚本类型
 
-## http-request
-在获得一个http请求时触发，可配置的参数：
-- `requires-body = true`代表是否获取http请求的body
-- `binary-body-mode = true`代表获取http请求的body类型为Uint8Array
-- `argument = "name=loon&version=2.1.0"`脚本中可以通过变量`$argument`获取，**为了能够准确解析到参数，请将参数用双引号包裹**
+所有脚本都可以使用 [Script API](./script_api.md)。
 
-### 配置语法
-```
-http-request ^https?:\/\/(www.)?(example)\.com script-path=localscript.js,tag = requestScript,requires-body = true,timeout = 10,binary-body-mode = false,argument = "1234",enable=true
-```
-脚本默认执行超时时间10s，此类脚本中可以使用如下变量，
+## `http-request`
 
-- 所有[Script API](./script_api.md)
-- `$request`: 一个http请求信息
-    - `$request.url`: String类型，请求URL
-    - `$request.method`: String类型，请求方法
-    - `$request.headers`: js对象，请求头
-    - `$request.body`: String或者Uint8Array类型，当`requires-body = true`时才有值，请求的body
-    - `$request.h2_trailers`: 开启 MitM over HTTP2 后请求中有 trailers 时会携带，仅在 `requires-body = true` 时有效（Loon build > 927）
-- `$response`: undefined
-- `$done()`方法参数说明：
-    - `$done()`: 不传任何参数，表示放弃该请求，请求连接会直接断开
-    - `$done({})`: 空js对象，请求继续，任何请求参数不会有任何变化
-    - `$done({url:"https://new.example.com/",headers:{},h2_trailes:{},node:"HK"})`: url参数替换原来的url，headers替换原来的request headers，h2_trailes替换原来的请求 trailer，不传表示用原来的，node参数表示该请求后续用指定的策略组（也可以是节点名称）进行请求（build 534版本开始适用）
-    - `$done({response:{
-        status:200,
-        headers:{},
-        body:""
-    }})`: 直接向该请求返回一个假的响应，body类型可以是String或者Uint8Array，**如果body的长度大于0，会自动计算headers中的content-length，content-encoding也会根据body类型自动生成**
-    **注意** 当$done()参数的对象中的request不包含headers或者body时，表示使用原请求的headers和body，如果要清除原请求的body时，参数的`body=""`即可，清除原headers的话`headers={}`
+在请求发出前执行。
 
-## http-response
-在获得一个http响应时触发，参数`requires-body = true`代表是否获取http响应的body
-- `requires-body = true`代表是否获取http请求的body
-- `binary-body-mode = true`代表获取http请求的body类型为Uint8Array
-- `argument = "name=loon&version=2.1.0"`脚本中可以通过变量`$argument`获取，**为了能够准确解析到参数，请将参数用双引号包裹**
+```ini
+http-request ^https?:\/\/example\.com script-path=request.js,tag=请求脚本,requires-body=true,binary-body-mode=false,timeout=10,argument="name=loon",enable=true
+```
 
-### 配置语法
-```
-http-response ^https?:\/\/(www.)?(example)\.com script-path=https://example.com/loon.js,timeout=10,requires-body = true,tag = responseScript,enable=true,timeout = 10,binary-body-mode = false,argument = "1234",enable=true
-```
-脚本默认执行超时时间10s，此类脚本中可以使用如下变量：
-- 所有[Script API](./script_api.md)
-- `$request`: http请求信息
-    - `$request.url`: String类型，请求URL
-    - `$request.method`: String类型，请求方法
-    - `$request.headers`: js对象，请求头
-    - `$request.body`: String或者Uint8Array类型，如果请求带有body，此参数才有值
-    - `$request.h2_trailers`: 开启 MitM over HTTP2 后请求中有 trailers 时会携带（Loon build > 927）
-- `$response`: http响应信息
-    - `$response.status`: 响应状态
-    - `$response.headers`: 响应头
-    - `$response.body`: String或者Uint8Array类型，如果响应带有body，并且requires-body = true时此参数才有值
-    - `$response.h2_trailers`: 开启 MitM over HTTP2 后响应中有 trailers 时会携带，仅在 `requires-body = true` 时有效（Loon build > 927）
-- `$done()`方法参数说明：
-    - `$done()`: 不传任何参数，表示放弃该请求，请求连接会直接断开
-    - `$done({})`: 空js对象，响应继续，任何响应参数不会有任何变化
-    - `$done({
-        status:200,
-        headers:{},
-        h2_trailers:{},
-        body:""
-    })`: 直接向该请求返回一个假的响应，body类型可以是String或者Uint8Array，**如果body的长度大于0，会自动计算headers中的content-length，content-encoding也会根据body类型自动生成**
-    **注意** 当$done()参数的对象中的response不包含headers或者body时，表示使用原响应的headers和body，如果要清除原请求的body时，参数的`body=""`即可，清除原headers的话`headers={}`，清除h2_trailers的话`h2_trailers={}`
+常用参数：
 
-## cron
-- 根据设定的cron表达式定时触发脚本
-- "* * * * *" : 分 时 日 月 周 
-- "* * * * * *" :秒 分 时 日 月 周
+| 参数 | 说明 |
+|---|---|
+| `requires-body` | 是否读取请求 Body |
+| `binary-body-mode` | 是否以 `Uint8Array` 读取 Body |
+| `argument` | 传给脚本的参数，建议使用双引号 |
+| `timeout` | 超时时间，默认 10 秒 |
 
-### 配置语法
-```
-cron "0 8 * * *" script-path=cron.js,tag = cronScript,timeout = 300,argument = "1234",enable=true
-```
-脚本默认执行超时时间200s，此类脚本中可以使用如下变量：
-- 所有[Script API](./script_api.md)
+可用对象：
 
-## network-changed
-当网络环境发生变化时会调用此类型脚本，如果有多个这种类型的脚本，只会调用配置文件中的第一个
-### 配置语法
-```
-network-changed script-path=https://raw.githubusercontent.com/Loon0x00/LoonExampleConfig/master/Script/netChanged.js,tag=changeModel,timeout = 300,argument = "1234",enable=true
-```
-脚本默认执行超时时间200s，此类脚本中可以使用如下变量：
-- 所有[Script API](./script_api.md)
+| 对象 | 说明 |
+|---|---|
+| `$request.url` | 请求 URL |
+| `$request.method` | 请求方法 |
+| `$request.headers` | 请求 Header 对象 |
+| `$request.body` | String 或 Uint8Array；需要 `requires-body=true` |
+| `$request.h2_trailers` | HTTP/2 Trailers；Build 927+ |
+| `$response` | `undefined` |
 
-## generic
-以节点、策略组、规则等配置为参数的脚本，需要在app内部页面手动进行触发，不会主动触发
-### 配置语法
+结束脚本：
+
+```javascript
+// 中断请求
+$done();
+
+// 不修改请求
+$done({});
+
+// 修改请求
+$done({
+  url: "https://new.example.com/",
+  headers: {"X-Loon": "true"},
+  h2_trailers: {},
+  node: "HK"
+});
+
+// 直接返回响应
+$done({
+  response: {
+    status: 200,
+    headers: {"Content-Type": "application/json"},
+    body: "{}"
+  }
+});
 ```
-generic script-path=https://raw.githubusercontent.com/Loon0x00/LoonExampleConfig/master/Script/generic_example.js,tag=GeoLocation,timeout=10,img-url=location.fill.viewfinder.system,timeout = 300,argument = "1234",enable=true
+
+未提供 `headers` 或 `body` 时保留原值。使用 `headers: {}` 或 `body: ""` 可以清空对应内容。
+
+## `http-response`
+
+收到响应后执行。
+
+```ini
+http-response ^https?:\/\/example\.com script-path=response.js,tag=响应脚本,requires-body=true,binary-body-mode=false,timeout=10,argument="name=loon",enable=true
 ```
-此类脚本中可以使用如下变量
-- 所有[Script API](./script_api.md)
+
+参数与 `http-request` 相同。可用对象：
+
+| 对象 | 说明 |
+|---|---|
+| `$request` | 原请求信息 |
+| `$response.status` | 响应状态码 |
+| `$response.headers` | 响应 Header 对象 |
+| `$response.body` | String 或 Uint8Array；需要 `requires-body=true` |
+| `$response.h2_trailers` | HTTP/2 Trailers；Build 927+ |
+
+```javascript
+// 不修改响应
+$done({});
+
+// 修改响应
+$done({
+  status: 200,
+  headers: {"Content-Type": "application/json"},
+  h2_trailers: {},
+  body: "{}"
+});
+```
+
+未提供 `headers`、`body` 或 `h2_trailers` 时保留原值；传入空值可以清除。
+
+## `cron`
+
+按照 Cron 表达式定时执行。
+
+```ini
+cron "0 8 * * *" script-path=cron.js,tag=定时任务,timeout=300,argument="1234",enable=true
+```
+
+支持两种格式：
+
+```text
+* * * * *      分 时 日 月 周
+* * * * * *    秒 分 时 日 月 周
+```
+
+## `network-changed`
+
+网络环境变化时执行。如果配置了多条，只执行第一条。
+
+```ini
+network-changed script-path=network-changed.js,tag=网络变化,timeout=300,argument="1234",enable=true
+```
+
+## `generic`
+
+在 App 中手动触发，可将节点、策略组或规则作为上下文传给脚本。
+
+```ini
+generic script-path=generic.js,tag=通用脚本,img-url=location.fill.viewfinder.system,timeout=300,argument="1234",enable=true
+```

@@ -3,21 +3,24 @@ sidebar_position: 9
 ---
 
 # 订阅规则
-订阅规则是一系列规则的集合，只要是满足Loon类型的规则都可以放入规则集中。
-```
-https://raw.githubusercontent.com/Loon0x00/LoonExampleConfig/master/Rule/ExampleRule.list, PROXY
+
+订阅规则是一组远程规则。规则文件中的每一行都应使用 Loon 支持的规则语法。
+
+```ini
+https://raw.githubusercontent.com/Loon0x00/LoonExampleConfig/master/Rule/ExampleRule.list,PROXY
 ```
 
 ## 查询性能
-Loon目前可以承载数十万级别数量的规则，无须担心性能和耗时问题。同时也会采用LRU算法缓存近期的结果，命中结果的时间损耗接近为0ms。
 
-下表为iPhone15 Pro Loon 3.2.0 build 712 上的测试情况，在app运行中的查询耗时可能受多线程等因素影响稍微有些波动，具体可以在请求记录的详情页面查看（build 712+）
+Loon 支持数十万条规则，并使用 LRU 缓存近期结果。缓存命中时，查询耗时接近 0 ms。
 
-| 规则类型     | 耗时 | 测试规则数量 |测试订阅规则链接|
-| ----------- | ----------- | ----------- | ----------- |
-| DOMAIN,DOMAIN-SUFFIX|  1ms内   | 20万 | [去广告(7.7万+)](https://raw.githubusercontent.com/GMOogway/shadowrocket-rules/master/sr_reject_list.module) [去广告(12万+)](https://adrules.top/adrules.list)|
-| IP-CIDR   |    1ms内     | 10万 | [ChainIP(10万IPV4，4千IPV6)](https://raw.githubusercontent.com/Loon0x00/LoonLiteRules/main/direct/chinaIPTest.list) |
-| IP-CIDR6| 1-2ms  | 4千| [ChainIP(10万IPV4，4千IPV6)](https://raw.githubusercontent.com/Loon0x00/LoonLiteRules/main/direct/chinaIPTest.list)|
-|IPANS|1ms内|5千|[中国大陆 ASN](https://raw.githubusercontent.com/VirgilClyne/GetSomeFries/main/ruleset/ASN.China.list)|
+以下数据来自 iPhone 15 Pro、Loon 3.2.0 (712)。实际耗时会受设备状态和并发请求影响，可在请求记录详情中查看。
 
-DOMAIN,DOMAIN-SUFFIX,IP-CIDR,IP-CIDR6,GEOIP,IPASN,SRC-PORT,DEST-PORT,PROTOCOL类型的规则，查询耗时不会随着数量的增多而增多；DOMAIN-KEYWORD,USER-AGENT,URL-REGEX类型的规则会随着数量的增多而增加一些（5千+的DOMAIN-KEYWORD规则，查询耗时在10ms以内，USER-AGENT,URL-REGEX查询效率会随着相关表达式而波动，且测试数量较小暂时不做参考）；**所以在选择规则类型时，尽量优先选择前面类型的规则。**
+| 规则类型 | 耗时 | 数量 | 测试规则 |
+|---|---:|---:|---|
+| `DOMAIN`、`DOMAIN-SUFFIX` | 1 ms 内 | 20 万 | [规则 1](https://raw.githubusercontent.com/GMOogway/shadowrocket-rules/master/sr_reject_list.module)、[规则 2](https://adrules.top/adrules.list) |
+| `IP-CIDR` | 1 ms 内 | 10 万 | [China IP](https://raw.githubusercontent.com/Loon0x00/LoonLiteRules/main/direct/chinaIPTest.list) |
+| `IP-CIDR6` | 1–2 ms | 4 千 | [China IP](https://raw.githubusercontent.com/Loon0x00/LoonLiteRules/main/direct/chinaIPTest.list) |
+| `IP-ASN` | 1 ms 内 | 5 千 | [中国大陆 ASN](https://raw.githubusercontent.com/VirgilClyne/GetSomeFries/main/ruleset/ASN.China.list) |
+
+`DOMAIN`、`DOMAIN-SUFFIX`、`IP-CIDR`、`IP-CIDR6`、`GEOIP`、`IP-ASN`、端口和协议规则受数量影响较小。`DOMAIN-KEYWORD`、`USER-AGENT` 和 `URL-REGEX` 会随规则数量和表达式复杂度增加耗时，建议优先使用前一类规则。

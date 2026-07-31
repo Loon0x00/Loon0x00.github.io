@@ -1,0 +1,26 @@
+{
+  "title": {
+    "message": "Loon",
+    "description": "The title in the navbar"
+  },
+  "logo.alt": {
+    "message": "Loon Logo",
+    "description": "The alt text of navbar logo"
+  },
+  "item.label.文档": {
+    "message": "Docs",
+    "description": "Navbar item with label 文档"
+  },
+  "item.label.Rewrite 生成器": {
+    "message": "Rewrite Builder",
+    "description": "Navbar item with label Rewrite 生成器"
+  },
+  "item.label.教程": {
+    "message": "Tutorials",
+    "description": "Navbar item with label 教程"
+  },
+  "item.label.GitHub": {
+    "message": "GitHub",
+    "description": "Navbar item with label GitHub"
+  }
+}
