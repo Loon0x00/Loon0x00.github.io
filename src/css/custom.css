@@ -507,8 +507,30 @@ a {
 }
 
 @media (max-width: 996px) {
+  .navbar {
+    background: rgba(255, 255, 255, 0.98);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
   .navbar__inner {
     width: 100%;
+  }
+
+  .navbar-sidebar {
+    z-index: calc(var(--ifm-z-index-fixed) + 2);
+    height: 100dvh;
+    max-height: 100dvh;
+  }
+
+  .navbar-sidebar__backdrop {
+    z-index: calc(var(--ifm-z-index-fixed) + 1);
+    width: 100vw;
+    height: 100dvh;
+  }
+
+  [data-theme='dark'] .navbar {
+    background: rgba(18, 17, 26, 0.98);
   }
 
   .theme-doc-markdown {

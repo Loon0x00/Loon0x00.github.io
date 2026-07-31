@@ -1454,6 +1454,7 @@ function ConditionGroup({
   const t = useBuilderText();
   return (
     <div
+      data-depth={depth}
       className={
         depth === 0 ? styles.rootConditionGroup : styles.nestedConditionGroup
       }>

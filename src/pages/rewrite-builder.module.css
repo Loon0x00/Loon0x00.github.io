@@ -1047,6 +1047,7 @@
   .topToolbar {
     flex-direction: column;
     padding: 0.75rem;
+    backdrop-filter: none;
   }
 
   .phaseSelector {
@@ -1070,10 +1071,62 @@
     flex-direction: column;
   }
 
+  .nestedWrap {
+    padding: 0;
+    border-left: 0;
+  }
+
+  .nestedConditionGroup {
+    padding: 0.45rem 0 0.25rem 0.65rem;
+    border-width: 0 0 0 3px;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  .nestedConditionGroup[data-depth='1'] {
+    border-color: rgba(118, 87, 246, 0.5);
+  }
+
+  .nestedConditionGroup[data-depth='2'] {
+    border-color: rgba(22, 132, 91, 0.45);
+  }
+
+  .nestedConditionGroup[data-depth='3'] {
+    border-color: rgba(213, 137, 35, 0.5);
+  }
+
+  .nestedConditionGroup[data-depth='4'] {
+    border-color: rgba(203, 75, 83, 0.45);
+  }
+
+  .nestedConditionGroup > .groupHeader {
+    align-items: center;
+    flex-direction: row;
+    gap: 0.5rem;
+    padding: 0 0 0.55rem;
+  }
+
+  .nestedConditionGroup > .groupHeader > div:first-child {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .nestedConditionGroup > .groupHeader p {
+    display: none;
+  }
+
+  .nestedConditionGroup .groupEyebrow {
+    overflow: hidden;
+    margin: 0;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .conditionRow,
   .actionCard {
+    position: relative;
     gap: 0.45rem;
-    padding: 0.62rem;
+    padding: 0.62rem 2.75rem 0.62rem 0.62rem;
   }
 
   .rowNumber,
@@ -1094,7 +1147,11 @@
   }
 
   .iconButton {
-    margin-top: 1.15rem;
+    position: absolute;
+    z-index: 2;
+    top: 0.45rem;
+    right: 0.45rem;
+    margin: 0;
   }
 
   .actionTitleRow {
@@ -1103,6 +1160,8 @@
   }
 
   .actionTitleRow .field {
+    width: 100%;
+    flex: none;
     max-width: none;
   }
 
@@ -1113,6 +1172,11 @@
 
   .previewCard {
     border-radius: 15px;
+    backdrop-filter: none;
+  }
+
+  .heroGlow {
+    display: none;
   }
 }
 
@@ -1129,6 +1193,39 @@
 
   .phaseSelector {
     grid-template-columns: 1fr;
+  }
+
+  .rootConditionGroup {
+    padding: 0.5rem;
+  }
+
+  .nestedConditionGroup {
+    padding-left: 0.45rem;
+    border-left-width: 2px;
+  }
+
+  .logicToggleCompact button {
+    min-width: 42px;
+    padding-right: 0.35rem;
+    padding-left: 0.35rem;
+  }
+
+  .conditionRow,
+  .actionCard {
+    padding-right: 2.5rem;
+  }
+
+  .groupActions {
+    gap: 0.35rem;
+  }
+
+  .groupActions button {
+    min-height: 34px;
+    padding: 0.42rem 0.55rem;
+  }
+
+  .removeGroupButton {
+    margin-left: 0;
   }
 
   .metrics {
