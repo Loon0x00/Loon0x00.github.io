@@ -35,20 +35,20 @@ Rewrite 使用以下基本结构：
 阶段：
 
 ```text
-http-request
-http-response
+request
+response
 ```
 
 示例：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/api\.example\.com/ then request.header.set(name="X-Loon", value="matched")
+request if ${url} ~= /^https:\/\/api\.example\.com/ then request.header.set("X-Loon", "matched")
 ```
 
 多个动作使用 `|` 连接，并按照从左到右的顺序执行：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/api\.example\.com/ then request.header.set(name="X-Loon", value="matched") | request.header.delete(name="Cookie")
+request if ${url} ~= /^https:\/\/api\.example\.com/ then request.header.set("X-Loon", "matched") | request.header.del("Cookie")
 ```
 
 ## 4. 条件表达式
@@ -63,13 +63,13 @@ http-request if ${url} ~= /^https:\/\/api\.example\.com/ then request.header.set
 精确匹配：
 
 ```ini
-http-request if ${request.method} == "POST" then request.header.set(name="X-Method", value="POST")
+request if ${request.method} == "POST" then request.header.set("X-Method", "POST")
 ```
 
 正则匹配：
 
 ```ini
-http-response if ${response.header['Content-Type']} ~= /^application\/json(?:;|$)/i then response.header.set(name="X-JSON", value="true")
+response if ${response.header['Content-Type']} ~= /^application\/json(?:;|$)/i then response.header.set("X-JSON", "true")
 ```
 
 `==` 比较完整值，`~=` 使用正则查找匹配。需要匹配完整字符串时，应当在正则中显式使用 `^` 和 `$`。
@@ -85,13 +85,21 @@ http-response if ${response.header['Content-Type']} ~= /^application\/json(?:;|$
 示例：
 
 ```ini
-http-request if ${request.method} == "POST" && (${request.header['X-Region']} == "CN" || ${request.header['X-Region']} == "HK") then request.header.set(name="X-Matched", value="true")
+request if ${request.method} == "POST" && (${request.header['X-Region']} == "CN" || ${request.header['X-Region']} == "HK") then request.header.set("X-Matched", "true")
 ```
 
 优先级规定为：
 
 ```text
 比较操作符 > && > ||
+```
+
+包含两个及以上直接条件的显式条件组会保留括号，保证配置再次进入 UI
+编辑时仍恢复成用户原来的分组。只包含一个条件的冗余括号会自动省略：
+
+```text
+A || (B && C)  → 保持 A || (B && C)
+A && (B)       → 输出 A && B
 ```
 
 ## 5. 动态值统一语法
@@ -108,17 +116,20 @@ ${变量表达式}
 2. 插件 `[Argument]` 参数。
 3. 正则匹配结果。
 
-新 Rewrite 语法中不再引入其他动态值写法，例如：
+除 Action 自带正则的 `RegexReplacement` 参数允许局部 `$n` 外，
+Rewrite 的通用动态值不再引入其他写法，例如：
 
 ```text
-$1
 ${argument.price}
 arg.price
 match.item.1
 {price}
 ```
 
-现有插件 Script 中的 `{price}` 继续按旧语法处理；新的 `if/then` Rewrite 只识别 `${price}`。
+现有插件 Script 中的 `{price}` 继续按旧语法处理；新的 `if/then` Rewrite
+通用变量只识别 `${price}`。
+`$1` 不是通用动态值，只能在 Header/Body Replace 的替换参数中引用该
+Action 自带正则的捕获组。
 
 ## 6. 内置变量
 
@@ -135,13 +146,13 @@ match.item.1
 ### 6.1 URL
 
 ```ini
-http-request if ${url} ~= /^https:\/\/api\.example\.com/ then request.header.set(name="X-Matched", value="true")
+request if ${url} ~= /^https:\/\/api\.example\.com/ then request.header.set("X-Matched", "true")
 ```
 
 ### 6.2 请求 Header
 
 ```ini
-http-request if ${request.header['X-Region']} == "CN" then request.header.set(name="X-Country", value="China")
+request if ${request.header['X-Region']} == "CN" then request.header.set("X-Country", "China")
 ```
 
 Header 名称查找不区分大小写：
@@ -156,14 +167,14 @@ ${request.header['Content-Type']}
 ### 6.3 响应 Header 和状态码
 
 ```ini
-http-response if ${response.status} == 200 && ${response.header['Content-Type']} ~= /^application\/json/i then response.header.set(name="X-Matched", value="true")
+response if ${response.status} == 200 && ${response.header['Content-Type']} ~= /^application\/json/i then response.header.set("X-Matched", "true")
 ```
 
 请求阶段不能引用尚未产生的响应字段：
 
 ```ini
 # 非法
-http-request if ${response.status} == 200 then request.header.set(name="X-Test", value="true")
+request if ${response.status} == 200 then request.header.set("X-Test", "true")
 ```
 
 ## 7. 插件 `[Argument]` 参数
@@ -190,7 +201,7 @@ ${level}
 示例：
 
 ```ini
-http-response if ${enabled} == true && ${level} == 2 && ${request.header['X-Region']} == ${region} then response.json.replace(path="data.price", value=${price})
+response if ${enabled} == true && ${level} == 2 && ${request.header['X-Region']} == ${region} then response.json.replace("data.price", ${price})
 ```
 
 `[Argument]` 的第一项继续表示 UI 控件类型，参数值类型使用以下规则：
@@ -228,6 +239,10 @@ name = input,"Loon",type=string
 region = select,"CN","US",type=string
 ```
 
+旧版插件未声明 `type` 时保持原有行为：`input`、`select` 按 String
+解析，`switch` 按 Boolean 解析。`number`、`string` 不能作为独立位置参数，
+值类型必须通过 `type=number` 或 `type=string` 声明。
+
 Rewrite 使用参数时保留其声明类型，不再提供运行时类型转换语法。
 
 以下组合非法：
@@ -251,7 +266,7 @@ ${url} ~= /regex/ as item
 示例：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/api\.shop\.com\/item\/(\d+)\?price=([^&]+)/ as item then request.header.set(name="X-Item-ID", value="${item.1}")
+request if ${url} ~= /^https:\/\/api\.shop\.com\/item\/(\d+)\?price=([^&]+)/ as item then request.header.set("X-Item-ID", "${item.1}")
 ```
 
 ### 8.2 引用匹配结果
@@ -279,7 +294,7 @@ ${item.2} = 9.99
 Header 正则也使用相同语法：
 
 ```ini
-http-request if ${request.header['X-Product']} ~= /^([A-Z]+)-(\d+)$/ as product then request.header.set(name="X-Product-Type", value="${product.1}") | request.header.set(name="X-Product-ID", value="${product.2}")
+request if ${request.header['X-Product']} ~= /^([A-Z]+)-(\d+)$/ as product then request.header.set("X-Product-Type", "${product.1}") | request.header.set("X-Product-ID", "${product.2}")
 ```
 
 ### 8.3 `as` 使用约束
@@ -302,16 +317,38 @@ http-request if ${request.header['X-Product']} ~= /^([A-Z]+)-(\d+)$/ as product 
 允许：
 
 ```ini
-http-request if (${request.method} == "GET" || ${request.method} == "POST") && ${url} ~= /item\/(\d+)/ as item then request.header.set(name="X-Item", value="${item.1}")
+request if (${request.method} == "GET" || ${request.method} == "POST") && ${url} ~= /item\/(\d+)/ as item then request.header.set("X-Item", "${item.1}")
 ```
 
 禁止：
 
 ```ini
-http-request if ${url} ~= /item\/(\d+)/ as item || ${request.header['X-Debug']} == "true" then request.header.set(name="X-Item", value="${item.1}")
+request if ${url} ~= /item\/(\d+)/ as item || ${request.header['X-Debug']} == "true" then request.header.set("X-Item", "${item.1}")
 ```
 
 禁止示例可能仅通过 `X-Debug == "true"` 使条件成立，此时正则没有匹配，`${item.1}` 不存在。第一阶段不允许将未定义的捕获结果按 null 或空字符串处理。
+
+### 8.4 条件捕获与 Action 捕获
+
+条件正则和 Action 自带正则使用两套边界明确的捕获语法：
+
+1. `if` 中正则匹配的结果必须通过 `as` 命名，使用 `${名称.序号}` 引用。
+2. Action 参数中自带的正则不使用 `as`，仅在该 Action 的替换参数中使用 `$0`、`$1` 至 `$n`。
+3. `$n` 不是 Rewrite 变量，不能跨 Action 使用，也不能用于没有自带正则的 Action。
+4. `${名称.0}` 和 `$0` 都表示完整匹配，但前者属于命名的条件正则，后者属于当前 Action 自带的正则。
+
+例如：
+
+```ini
+request if ${url} ~= /^https:\/\/old\.example\.com(\/.*)$/ as item then url.replace("https://new.example.com${item.1}")
+```
+
+```ini
+request if ${url} ~= /^https:\/\/example\.com/ then request.body.replace(/price=(\d+)/, "amount=$1")
+```
+
+第一条配置中的 `${item.1}` 来自 `if` 条件；第二条配置中的 `$1` 来自
+`request.body.replace` 的第一个参数。`url.replace("$1")` 是非法配置。
 
 ## 9. 三种变量来源汇总
 
@@ -330,7 +367,7 @@ price = input,9.99,type=number
 region = select,"CN","US"
 
 [Rewrite]
-http-request if ${enabled} == true && ${url} ~= /^https:\/\/api\.shop\.com\/item\/(\d+)/ as item && ${request.header['X-Region']} == ${region} then redirect(status=302, location="https://m.shop.com/item/${item.1}?price=${price}&region=${region}")
+request if ${enabled} == true && ${url} ~= /^https:\/\/api\.shop\.com\/item\/(\d+)/ as item && ${request.header['X-Region']} == ${region} then redirect(302, "https://m.shop.com/item/${item.1}?price=${price}&region=${region}")
 ```
 
 ## 10. 字面量
@@ -349,15 +386,15 @@ http-request if ${enabled} == true && ${url} ~= /^https:\/\/api\.shop\.com\/item
 以下写法非法：
 
 ```text
-path=data.price
-value=hello world
+data.price
+hello world
 ```
 
 必须写成：
 
 ```text
-path="data.price"
-value="hello world"
+"data.price"
+"hello world"
 ```
 
 ### 10.2 数字、布尔值和 null
@@ -375,8 +412,8 @@ null
 对比：
 
 ```text
-value=9.99      数字
-value="9.99"    字符串
+9.99      数字
+"9.99"    字符串
 ```
 
 ### 10.3 正则
@@ -408,7 +445,7 @@ s    dot 匹配换行
 正则字面量内部不解析 `${...}`。需要由插件参数提供完整正则时，应直接使用变量作为右操作数：
 
 ```ini
-http-request if ${url} ~= ${urlPattern} then request.header.set(name="X-Matched", value="true")
+request if ${url} ~= ${urlPattern} then request.header.set("X-Matched", "true")
 ```
 
 ## 11. 字符串转义
@@ -427,7 +464,7 @@ http-request if ${url} ~= ${urlPattern} then request.header.set(name="X-Matched"
 示例：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.set(name="X-Info", value="price=\"${price}\", region=\"${region}\"")
+request if ${url} ~= /^https:\/\/example\.com/ then request.header.set("X-Info", "price=\"${price}\", region=\"${region}\"")
 ```
 
 假设插件参数为：
@@ -440,7 +477,7 @@ region = select,"CN","US"
 
 其中：
 
-1. `value="..."` 外层双引号用于界定整个配置字符串。
+1. `"..."` 外层双引号用于界定整个配置字符串。
 2. `\"` 表示最终字符串中的一个双引号。
 3. `${price}` 替换为 `9.99`。
 4. `${region}` 替换为 `CN`。
@@ -461,7 +498,7 @@ X-Info: price="9.99", region="CN"
 如果需要输出字面量 `${price}`，而不是引用参数：
 
 ```ini
-request.header.set(name="X-Template", value="literal \${price}")
+request.header.set("X-Template", "literal \${price}")
 ```
 
 最终写入的 Header 为：
@@ -482,7 +519,7 @@ ${response.header['Content-Type']}
 这样在双引号模板字符串内引用 Header 时不会产生双引号嵌套：
 
 ```ini
-request.header.set(name="X-Origin", value="UA=${request.header['User-Agent']}")
+request.header.set("X-Origin", "UA=${request.header['User-Agent']}")
 ```
 
 Header 名称内部建议支持：
@@ -516,38 +553,82 @@ ${request.header['X-A=B,C']}
 示例：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/api\.example\.com/ then response.body.mock(type="json", data=`{"code":0,"message":"a,b=c","data":{"price":9.99}}`, status=200)
+response if ${url} ~= /^https:\/\/api\.example\.com/ then response.body.mock("json", `{"code":0,"message":"a,b=c","data":{"price":9.99}}`, 200)
 ```
 
 需要动态变量时使用普通双引号模板字符串：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/api\.example\.com\/item\/(\d+)/ as item then response.body.mock(type="json", data="{\"code\":0,\"price\":${price},\"item\":\"${item.1}\"}", status=200)
+response if ${url} ~= /^https:\/\/api\.example\.com\/item\/(\d+)/ as item then response.body.mock("json", "{\"code\":0,\"price\":${price},\"item\":\"${item.1}\"}", 200)
 ```
 
 ## 14. 动作参数
 
-动作参数必须使用命名参数：
+动作参数统一使用位置参数：
 
 ```text
-action(name=value, name=value)
+action(value, value)
 ```
 
-不建议继续使用位置参数：
+参数按照 Action 方法声明中的顺序填写，不允许填写参数名称：
 
 ```text
-# 不建议
-redirect 302 "https://example.com"
+# 合法
+redirect(302, "https://example.com")
 
-# 建议
+# 非法
 redirect(status=302, location="https://example.com")
 ```
 
-新语法需要覆盖当前全部 29 种 Rewrite action。每个 action 都使用以下调用形式：
+可选参数只能从最右侧开始省略。已经发布的方法参数顺序不得调整；
+新增可选参数只能追加在方法末尾。
+
+### Action 方法声明
 
 ```text
-action(name=value, name=value)
+url.replace(String)
+redirect(Number, String)
+reject(Number[, String])
+reject_img(Number)
+reject_dict(Number)
+reject_array(Number)
+reject_video(Number)
+
+request.header.add(String, String)
+request.header.set(String, String)
+request.header.del(String)
+request.header.replace(String, Regex, RegexReplacement)
+
+response.header.add(String, String)
+response.header.set(String, String)
+response.header.del(String)
+response.header.replace(String, Regex, RegexReplacement)
+
+request.body.replace(Regex, RegexReplacement)
+response.body.replace(Regex, RegexReplacement)
+
+request.json.add(String, Any)
+request.json.delete(String)
+request.json.replace(String, Any)
+request.json.jq(String)
+request.json.jq_file(String)
+
+response.json.add(String, Any)
+response.json.delete(String)
+response.json.replace(String, Any)
+response.json.jq(String)
+response.json.jq_file(String)
+
+request.body.mock(String, String[, Boolean])
+request.body.mock_file(String, String[, Boolean])
+
+response.body.mock(String, String[, Number[, Boolean]])
+response.body.mock_file(String, String[, Number[, Boolean]])
 ```
+
+声明中的 `[...]` 表示尾部可选参数，不是配置中需要填写的字符。
+`RegexReplacement` 在配置中仍然使用字符串形式，但其中的 `$0` 至 `$n`
+会引用同一个 Action 的正则匹配结果。
 
 ### 14.1 URL 修改
 
@@ -556,15 +637,42 @@ action(name=value, name=value)
 对应当前 `header`：
 
 ```ini
-http-request if ${url} ~= /^http:\/\/example\.com/ then url.replace(pattern=/^http:\/\/example\.com/, replacement="https://example.com")
+request if ${url} ~= /^http:\/\/example\.com(\/.*)$/ as item then url.replace("https://example.com${item.1}")
 ```
 
 参数：
 
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| `pattern` | Regex | 是 | 在完整 URL 中执行替换的正则 |
-| `replacement` | String | 是 | 替换内容，允许使用 `${...}` |
+| `replacement` | String | 是 | 替换内容，允许使用 `${...}`，不允许使用 `$n` |
+
+`url.replace` 不再重复配置正则。IF 中必须且只能有一个不在 OR
+分支中的 `${url} ~= /.../` 条件，并使用它作为 URL 替换范围：
+
+1. 必须存在一个所有成功路径都会经过的 URL 正则条件。
+2. 该条件不能位于 `||` 的可选分支中。
+3. 不能同时存在多个必选 URL 正则。
+4. 需要使用捕获结果时，必须在条件后声明 `as`，并使用
+   `${名称.0}`、`${名称.1}` 至 `${名称.n}`。
+5. `url.replace` 的参数中出现 `$0` 至 `$n` 时直接校验失败。
+
+例如：
+
+```ini
+request if ${url} ~= /^https:\/\/old\.example\.com(\/.*)$/ as urlMatch then url.replace("https://new.example.com${urlMatch.1}")
+```
+
+输入：
+
+```text
+https://old.example.com/api/user
+```
+
+最终 URL：
+
+```text
+https://new.example.com/api/user
+```
 
 ### 14.2 重定向
 
@@ -573,11 +681,11 @@ http-request if ${url} ~= /^http:\/\/example\.com/ then url.replace(pattern=/^ht
 对应当前 `302`、`307`：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/old\.example\.com\/item\/(\d+)/ as item then redirect(status=302, location="https://new.example.com/item/${item.1}")
+request if ${url} ~= /^https:\/\/old\.example\.com\/item\/(\d+)/ as item then redirect(302, "https://new.example.com/item/${item.1}")
 ```
 
 ```ini
-http-request if ${url} ~= /^https:\/\/old\.example\.com/ then redirect(status=307, location="https://new.example.com")
+request if ${url} ~= /^https:\/\/old\.example\.com/ then redirect(307, "https://new.example.com")
 ```
 
 参数：
@@ -585,9 +693,10 @@ http-request if ${url} ~= /^https:\/\/old\.example\.com/ then redirect(status=30
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | `status` | Number | 是 | 当前只允许 `302`、`307` |
-| `location` | String | 是 | URL 正则命中范围的替换内容，允许使用 `${...}` |
+| `location` | String | 是 | URL 正则命中范围的替换内容，允许使用 `${...}`，不允许使用 `$n` |
 
 为保持当前 `302`、`307` 的行为，`redirect(...)` 使用规则中唯一的必选 `${url} ~= /.../` 条件作为替换正则，在完整 URL 上只替换该正则命中的范围，未命中的部分继续保留。
+需要引用该条件的捕获结果时，同样必须声明 `as` 并使用 `${名称.n}`。
 
 因此使用 `redirect(...)` 时：
 
@@ -598,7 +707,7 @@ http-request if ${url} ~= /^https:\/\/old\.example\.com/ then redirect(status=30
 例如：
 
 ```ini
-http-request if ${url} ~= /^http:\/\/example\.com/ then redirect(status=302, location="https://api.example.com")
+request if ${url} ~= /^http:\/\/example\.com/ then redirect(302, "https://api.example.com")
 ```
 
 输入：
@@ -617,31 +726,35 @@ https://api.example.com/item/123?region=CN
 
 #### `reject`
 
-对应当前全部六种 reject action：
+自定义 Reject 与四种固定内容 Reject 使用不同方法，方法名直接表达响应类型：
 
 | 当前 action | 新 action | 响应内容 |
 |---|---|---|
-| `reject` | `reject(status=404, body="empty")` | 404、空 Body |
-| `reject-200` | `reject(status=200, body="empty")` | 200、空 Body |
-| `reject-img` | `reject(status=200, body="image")` | 200、1×1 GIF |
-| `reject-dict` | `reject(status=200, body="json-object")` | 200、`{}` |
-| `reject-array` | `reject(status=200, body="json-array")` | 200、`[]` |
-| `reject-video` | `reject(status=200, body="video")` | 200、空白视频 |
+| `reject` | `reject(404)` | 404、空 Body |
+| `reject-200` | `reject(200)` | 200、空 Body |
+| `reject-img` | `reject_img(200)` | 200、1×1 GIF |
+| `reject-dict` | `reject_dict(200)` | 200、`{}` |
+| `reject-array` | `reject_array(200)` | 200、`[]` |
+| `reject-video` | `reject_video(200)` | 200、空白视频 |
 
 示例：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com\/ads/ then reject(status=200, body="json-object")
+request if ${url} ~= /^https:\/\/example\.com\/ads/ then reject_dict(200)
+request if ${url} ~= /^https:\/\/example\.com\/blocked/ then reject(451, "Unavailable for legal reasons")
 ```
 
 参数：
 
 | 参数 | 类型 | 必填 | 允许值 |
 |---|---|---|---|
-| `status` | Number | 是 | `200`、`404` |
-| `body` | String | 是 | `"empty"`、`"image"`、`"json-object"`、`"json-array"`、`"video"` |
+| `status` | Number | 是 | `100...599` 范围内的整数 |
+| `body` | String | 否 | 仅 `reject` 支持；自定义 UTF-8 响应文本，省略表示空 Body |
 
-第一阶段只允许表格中的六种固定组合，不能任意组合 `status` 和 `body`。
+`reject_img`、`reject_dict`、`reject_array`、`reject_video` 只接收状态码，
+分别固定返回 GIF、JSON 对象、JSON 数组和空白视频，并设置对应的 Content-Type。
+`reject` 的第二个参数是普通自定义文本；例如 `reject(200, "{}")` 返回的是
+`text/plain`，若需要 JSON Content-Type，应使用 `reject_dict(200)`。
 
 ### 14.4 请求 Header
 
@@ -650,7 +763,7 @@ http-request if ${url} ~= /^https:\/\/example\.com\/ads/ then reject(status=200,
 对应当前 `header-add`：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.add(name="X-Loon", value="true")
+request if ${url} ~= /^https:\/\/example\.com/ then request.header.add("X-Loon", "true")
 ```
 
 #### `request.header.set`
@@ -658,15 +771,15 @@ http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.add(name
 对应当前 `header-replace`：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.set(name="User-Agent", value="Loon")
+request if ${url} ~= /^https:\/\/example\.com/ then request.header.set("User-Agent", "Loon")
 ```
 
-#### `request.header.delete`
+#### `request.header.del`
 
 对应当前 `header-del`：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.delete(name="Cookie")
+request if ${url} ~= /^https:\/\/example\.com/ then request.header.del("Cookie")
 ```
 
 #### `request.header.replace`
@@ -674,17 +787,17 @@ http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.delete(n
 对应当前 `header-replace-regex`：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.replace(name="User-Agent", pattern=/iPhone OS \d+/, replacement="iPhone OS 18")
+request if ${url} ~= /^https:\/\/example\.com/ then request.header.replace("User-Agent", /iPhone OS (\d+)/, "iPhone OS $1")
 ```
 
 参数：
 
 | action | 参数 |
 |---|---|
-| `request.header.add` | `name=String, value=String` |
-| `request.header.set` | `name=String, value=String` |
-| `request.header.delete` | `name=String` |
-| `request.header.replace` | `name=String, pattern=Regex, replacement=String` |
+| `request.header.add` | `String, String` |
+| `request.header.set` | `String, String` |
+| `request.header.del` | `String` |
+| `request.header.replace` | `String, Regex, RegexReplacement` |
 
 当前实现中 `header-add` 和 `header-replace` 最终都会设置对应 Header；新语法暂时保留 `add`、`set` 两个名称，以保持配置意图。
 
@@ -695,7 +808,7 @@ http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.replace(
 对应当前 `response-header-add`：
 
 ```ini
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.header.add(name="X-Loon", value="true")
+response if ${url} ~= /^https:\/\/example\.com/ then response.header.add("X-Loon", "true")
 ```
 
 #### `response.header.set`
@@ -703,15 +816,15 @@ http-response if ${url} ~= /^https:\/\/example\.com/ then response.header.add(na
 对应当前 `response-header-replace`：
 
 ```ini
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.header.set(name="Cache-Control", value="no-cache")
+response if ${url} ~= /^https:\/\/example\.com/ then response.header.set("Cache-Control", "no-cache")
 ```
 
-#### `response.header.delete`
+#### `response.header.del`
 
 对应当前 `response-header-del`：
 
 ```ini
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.header.delete(name="Set-Cookie")
+response if ${url} ~= /^https:\/\/example\.com/ then response.header.del("Set-Cookie")
 ```
 
 #### `response.header.replace`
@@ -719,17 +832,17 @@ http-response if ${url} ~= /^https:\/\/example\.com/ then response.header.delete
 对应当前 `response-header-replace-regex`：
 
 ```ini
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.header.replace(name="Content-Type", pattern=/; charset=.+$/i, replacement="")
+response if ${url} ~= /^https:\/\/example\.com/ then response.header.replace("Content-Type", /^(.+); charset=.+$/i, "$1")
 ```
 
 参数：
 
 | action | 参数 |
 |---|---|
-| `response.header.add` | `name=String, value=String` |
-| `response.header.set` | `name=String, value=String` |
-| `response.header.delete` | `name=String` |
-| `response.header.replace` | `name=String, pattern=Regex, replacement=String` |
+| `response.header.add` | `String, String` |
+| `response.header.set` | `String, String` |
+| `response.header.del` | `String` |
+| `response.header.replace` | `String, Regex, RegexReplacement` |
 
 ### 14.6 Body 正则替换
 
@@ -738,7 +851,7 @@ http-response if ${url} ~= /^https:\/\/example\.com/ then response.header.replac
 对应当前 `request-body-replace-regex`：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.body.replace(pattern=/"price":\s*[0-9.]+/, replacement="\"price\":9.99")
+request if ${url} ~= /^https:\/\/example\.com/ then request.body.replace(/"price":\s*([0-9.]+)/, "\"originalPrice\":$1")
 ```
 
 #### `response.body.replace`
@@ -746,7 +859,7 @@ http-request if ${url} ~= /^https:\/\/example\.com/ then request.body.replace(pa
 对应当前 `response-body-replace-regex`：
 
 ```ini
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.body.replace(pattern=/"enabled":\s*false/, replacement="\"enabled\":true")
+response if ${url} ~= /^https:\/\/example\.com/ then response.body.replace(/"enabled":\s*(false)/, "\"enabled\":$1")
 ```
 
 参数：
@@ -754,7 +867,10 @@ http-response if ${url} ~= /^https:\/\/example\.com/ then response.body.replace(
 | 参数 | 类型 | 必填 | 说明 |
 |---|---|---|---|
 | `pattern` | Regex | 是 | Body 匹配正则 |
-| `replacement` | String | 是 | 替换内容，允许使用 `${...}` |
+| `replacement` | RegexReplacement | 是 | 替换内容；`$0` 表示完整匹配，`$1` 至 `$n` 表示当前 Action 正则的捕获组，同时允许使用 `${...}` |
+
+`$n` 只在 Header/Body Replace 的 `RegexReplacement` 参数中具有捕获含义。
+其他 String 参数中的 `$n` 不会引用 Action 正则。
 
 ### 14.7 请求 JSON
 
@@ -763,7 +879,7 @@ http-response if ${url} ~= /^https:\/\/example\.com/ then response.body.replace(
 对应当前 `request-body-json-add`：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.json.add(path="data.price", value=${price})
+request if ${url} ~= /^https:\/\/example\.com/ then request.json.add("data.price", ${price})
 ```
 
 #### `request.json.delete`
@@ -771,7 +887,7 @@ http-request if ${url} ~= /^https:\/\/example\.com/ then request.json.add(path="
 对应当前 `request-body-json-del`：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.json.delete(path="data.ads")
+request if ${url} ~= /^https:\/\/example\.com/ then request.json.delete("data.ads")
 ```
 
 #### `request.json.replace`
@@ -779,7 +895,7 @@ http-request if ${url} ~= /^https:\/\/example\.com/ then request.json.delete(pat
 对应当前 `request-body-json-replace`：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.json.replace(path="data.price", value=${price})
+request if ${url} ~= /^https:\/\/example\.com/ then request.json.replace("data.price", ${price})
 ```
 
 #### `request.json.jq`
@@ -787,21 +903,26 @@ http-request if ${url} ~= /^https:\/\/example\.com/ then request.json.replace(pa
 对应当前 `request-body-json-jq`：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.json.jq(filter=".data.ads = []")
+request if ${url} ~= /^https:\/\/example\.com/ then request.json.jq(".data.ads = []")
 ```
 
+#### `request.json.jq_file`
+
+从插件资源文件读取 JQ：
+
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.json.jq(file="request-filter.jq")
+request if ${url} ~= /^https:\/\/example\.com/ then request.json.jq_file("request-filter.jq")
 ```
 
 参数：
 
 | action | 参数 |
 |---|---|
-| `request.json.add` | `path=String, value=Any` |
-| `request.json.delete` | `path=String` |
-| `request.json.replace` | `path=String, value=Any` |
-| `request.json.jq` | `filter=String` 或 `file=String`，二选一 |
+| `request.json.add` | `String, Any` |
+| `request.json.delete` | `String` |
+| `request.json.replace` | `String, Any` |
+| `request.json.jq` | `String`，内联 JQ |
+| `request.json.jq_file` | `String`，插件资源文件 |
 
 ### 14.8 响应 JSON
 
@@ -810,7 +931,7 @@ http-request if ${url} ~= /^https:\/\/example\.com/ then request.json.jq(file="r
 对应当前 `response-body-json-add`：
 
 ```ini
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.json.add(path="data.price", value=${price})
+response if ${url} ~= /^https:\/\/example\.com/ then response.json.add("data.price", ${price})
 ```
 
 #### `response.json.delete`
@@ -818,7 +939,7 @@ http-response if ${url} ~= /^https:\/\/example\.com/ then response.json.add(path
 对应当前 `response-body-json-del`：
 
 ```ini
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.json.delete(path="data.ads")
+response if ${url} ~= /^https:\/\/example\.com/ then response.json.delete("data.ads")
 ```
 
 #### `response.json.replace`
@@ -826,7 +947,7 @@ http-response if ${url} ~= /^https:\/\/example\.com/ then response.json.delete(p
 对应当前 `response-body-json-replace`：
 
 ```ini
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.json.replace(path="data.price", value=${price})
+response if ${url} ~= /^https:\/\/example\.com/ then response.json.replace("data.price", ${price})
 ```
 
 #### `response.json.jq`
@@ -834,21 +955,26 @@ http-response if ${url} ~= /^https:\/\/example\.com/ then response.json.replace(
 对应当前 `response-body-json-jq`：
 
 ```ini
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.json.jq(filter=".data.ads = []")
+response if ${url} ~= /^https:\/\/example\.com/ then response.json.jq(".data.ads = []")
 ```
 
+#### `response.json.jq_file`
+
+从插件资源文件读取 JQ：
+
 ```ini
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.json.jq(file="response-filter.jq")
+response if ${url} ~= /^https:\/\/example\.com/ then response.json.jq_file("response-filter.jq")
 ```
 
 参数：
 
 | action | 参数 |
 |---|---|
-| `response.json.add` | `path=String, value=Any` |
-| `response.json.delete` | `path=String` |
-| `response.json.replace` | `path=String, value=Any` |
-| `response.json.jq` | `filter=String` 或 `file=String`，二选一 |
+| `response.json.add` | `String, Any` |
+| `response.json.delete` | `String` |
+| `response.json.replace` | `String, Any` |
+| `response.json.jq` | `String`，内联 JQ |
+| `response.json.jq_file` | `String`，插件资源文件 |
 
 ### 14.9 Mock 请求 Body
 
@@ -859,19 +985,21 @@ http-response if ${url} ~= /^https:\/\/example\.com/ then response.json.jq(file=
 直接提供数据：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.body.mock(type="json", data="{\"price\":${price}}")
+request if ${url} ~= /^https:\/\/example\.com/ then request.body.mock("json", "{\"price\":${price}}")
 ```
+
+#### `request.body.mock_file`
 
 从文件读取：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.body.mock(type="json", file="request_body.json")
+request if ${url} ~= /^https:\/\/example\.com/ then request.body.mock_file("json", "request_body.json")
 ```
 
 Base64 数据：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.body.mock(type="png", data="iVBORw0KGgo...", base64=true)
+request if ${url} ~= /^https:\/\/example\.com/ then request.body.mock("png", "iVBORw0KGgo...", true)
 ```
 
 ### 14.10 Mock 响应 Body
@@ -880,35 +1008,56 @@ http-request if ${url} ~= /^https:\/\/example\.com/ then request.body.mock(type=
 
 对应当前 `mock-response-body`：
 
-该 action 虽然生成的是响应，但当前实现会在请求阶段命中规则后直接返回 Mock 响应，因此规则阶段使用 `http-request`。
+该 Action 配置为 `response`。Matcher 编译时检测到 Mock Action 后，只把这条
+Response Rewrite 放入 Request 索引，使其在请求发往上游前直接返回模拟响应。
+该 Rewrite 不再进入 Response 索引，因此模拟响应不会重复匹配同一条配置。
 
 直接提供数据：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then response.body.mock(type="json", data="{\"price\":${price}}", status=200)
+response if ${url} ~= /^https:\/\/example\.com/ then response.body.mock("json", "{\"price\":${price}}", 200)
 ```
+
+#### `response.body.mock_file`
 
 从文件读取：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then response.body.mock(type="json", file="response_body.json", status=200)
+response if ${url} ~= /^https:\/\/example\.com/ then response.body.mock_file("json", "response_body.json", 200)
 ```
 
 Base64 数据：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then response.body.mock(type="png", data="iVBORw0KGgo...", base64=true, status=200)
+response if ${url} ~= /^https:\/\/example\.com/ then response.body.mock("png", "iVBORw0KGgo...", 200, true)
 ```
 
-Mock Body 参数：
+Mock Body 方法参数顺序：
 
-| 参数 | 类型 | Request 必填 | Response 必填 | 说明 |
-|---|---|---|---|---|
-| `type` | String | 是 | 是 | Body 对应的内容类型 |
-| `data` | String | 与 `file` 二选一 | 与 `file` 二选一 | 直接提供 Body |
-| `file` | String | 与 `data` 二选一 | 与 `data` 二选一 | 从插件文件读取 Body |
-| `base64` | Boolean | 否 | 否 | 默认 `false` |
-| `status` | Number | 不支持 | 否 | Response 默认 `200` |
+| 方法 | 参数顺序 |
+|---|---|
+| `request.body.mock` | 内容类型、内联 Body、可选 Base64 |
+| `request.body.mock_file` | 内容类型、资源文件、可选 Base64 |
+| `response.body.mock` | 内容类型、内联 Body、可选状态码、可选 Base64 |
+| `response.body.mock_file` | 内容类型、资源文件、可选状态码、可选 Base64 |
+
+Response 状态码默认 `200`，Base64 默认 `false`。需要填写 Base64 时必须先填写状态码，例如：
+
+```ini
+response.body.mock("png", "iVBORw0KGgo...", 200, true)
+```
+
+一条 Rewrite 只能包含一个 `response.body.mock` 或
+`response.body.mock_file`，并且只能与 `response.header.*` 组合。Header
+Action 可以位于 Mock 前后；执行时先生成 Mock 响应，再按配置顺序执行全部
+Header Action。
+
+由于包含 Mock 的规则在 Request 索引中提前匹配，其 `if` 不能使用
+`${response.status}` 或 `${response.header['name']}`。Mock Action 自身的参数
+同样不能引用这些尚未生成的 Response 变量。
+
+所有 Header Action 完成后，运行时会删除 `Transfer-Encoding`，并按照最终
+Body 字节数重新写入唯一且正确的 `Content-Length`。
 
 当前支持的 `type`：
 
@@ -932,42 +1081,69 @@ form-data
 
 | 序号 | 当前 action | 新 action |
 |---|---|---|
-| 1 | `header` | `url.replace(pattern=/regex/, replacement="value")` |
-| 2 | `302` | `redirect(status=302, location="url")` |
-| 3 | `reject` | `reject(status=404, body="empty")` |
-| 4 | `307` | `redirect(status=307, location="url")` |
-| 5 | `reject-200` | `reject(status=200, body="empty")` |
-| 6 | `reject-img` | `reject(status=200, body="image")` |
-| 7 | `reject-dict` | `reject(status=200, body="json-object")` |
-| 8 | `reject-array` | `reject(status=200, body="json-array")` |
-| 9 | `reject-video` | `reject(status=200, body="video")` |
-| 10 | `header-del` | `request.header.delete(name="name")` |
-| 11 | `header-replace` | `request.header.set(name="name", value="value")` |
-| 12 | `header-add` | `request.header.add(name="name", value="value")` |
-| 13 | `header-replace-regex` | `request.header.replace(name="name", pattern=/regex/, replacement="value")` |
-| 14 | `request-body-replace-regex` | `request.body.replace(pattern=/regex/, replacement="value")` |
-| 15 | `mock-request-body` | `request.body.mock(type="type", data="value")` |
-| 16 | `response-header-del` | `response.header.delete(name="name")` |
-| 17 | `response-header-replace` | `response.header.set(name="name", value="value")` |
-| 18 | `response-header-add` | `response.header.add(name="name", value="value")` |
-| 19 | `response-header-replace-regex` | `response.header.replace(name="name", pattern=/regex/, replacement="value")` |
-| 20 | `response-body-replace-regex` | `response.body.replace(pattern=/regex/, replacement="value")` |
-| 21 | `mock-response-body` | `response.body.mock(type="type", data="value", status=200)` |
-| 22 | `request-body-json-add` | `request.json.add(path="path", value="value")` |
-| 23 | `request-body-json-del` | `request.json.delete(path="path")` |
-| 24 | `request-body-json-replace` | `request.json.replace(path="path", value="value")` |
-| 25 | `response-body-json-add` | `response.json.add(path="path", value="value")` |
-| 26 | `response-body-json-del` | `response.json.delete(path="path")` |
-| 27 | `response-body-json-replace` | `response.json.replace(path="path", value="value")` |
-| 28 | `request-body-json-jq` | `request.json.jq(filter="jq")` |
-| 29 | `response-body-json-jq` | `response.json.jq(filter="jq")` |
+| 1 | `header` | `if` 保留旧 URL 正则，Action 转为 `url.replace("value")` |
+| 2 | `302` | `redirect(302, "url")` |
+| 3 | `reject` | `reject(404)` |
+| 4 | `307` | `redirect(307, "url")` |
+| 5 | `reject-200` | `reject(200)` |
+| 6 | `reject-img` | `reject_img(200)` |
+| 7 | `reject-dict` | `reject_dict(200)` |
+| 8 | `reject-array` | `reject_array(200)` |
+| 9 | `reject-video` | `reject_video(200)` |
+| 10 | `header-del` | `request.header.del("name")` |
+| 11 | `header-replace` | `request.header.set("name", "value")` |
+| 12 | `header-add` | `request.header.add("name", "value")` |
+| 13 | `header-replace-regex` | `request.header.replace("name", /regex/, "value")` |
+| 14 | `request-body-replace-regex` | `request.body.replace(/regex/, "value")` |
+| 15 | `mock-request-body` | `request.body.mock("type", "value")` |
+| 16 | `response-header-del` | `response.header.del("name")` |
+| 17 | `response-header-replace` | `response.header.set("name", "value")` |
+| 18 | `response-header-add` | `response.header.add("name", "value")` |
+| 19 | `response-header-replace-regex` | `response.header.replace("name", /regex/, "value")` |
+| 20 | `response-body-replace-regex` | `response.body.replace(/regex/, "value")` |
+| 21 | `mock-response-body` | `response.body.mock("type", "value", 200)` |
+| 22 | `request-body-json-add` | `request.json.add("path", "value")` |
+| 23 | `request-body-json-del` | `request.json.delete("path")` |
+| 24 | `request-body-json-replace` | `request.json.replace("path", "value")` |
+| 25 | `response-body-json-add` | `response.json.add("path", "value")` |
+| 26 | `response-body-json-del` | `response.json.delete("path")` |
+| 27 | `response-body-json-replace` | `response.json.replace("path", "value")` |
+| 28 | `request-body-json-jq` | `request.json.jq("jq")` |
+| 29 | `response-body-json-jq` | `response.json.jq("jq")` |
 
-动作名称和参数名称不允许使用变量替换：
+旧 `header` 语法需要额外处理隐式捕获。例如：
+
+```ini
+^https:\/\/old\.example\.com\/(.*)$ header https://new.example.com/$1
+```
+
+旧语法中的 `$1` 来自行首 URL 正则。解析为 `LNRewrite` 时必须生成稳定的
+捕获名称，并把 `$n` 转换为条件捕获变量：
+
+```ini
+request if ${url} ~= /^https:\/\/old\.example\.com\/(.*)$/i as urlMatch then url.replace("https://new.example.com/${urlMatch.1}")
+```
+
+转换规则如下：
+
+1. 旧替换内容没有 `$n` 时不强制生成 `as`。
+2. 出现 `$0` 至 `$n` 时，条件自动生成不与插件参数冲突的捕获名称。
+3. `$0` 转为 `${名称.0}`，`$1` 至 `$n` 转为对应的 `${名称.n}`。
+4. 捕获下标超过旧 URL 正则的捕获组数量时，旧配置解析失败。
+5. `LNRewrite.newSyntaxText`、配置保存和插件详情展示统一输出转换后的新语法。
+6. 旧语法只负责输入兼容；标准输出中不能重新出现旧式隐式 `$n`。
+
+这里的转换只适用于旧 `header`、`302`、`307` 中由行首 URL 正则产生的
+隐式捕获。旧 `header-replace-regex`、`request-body-replace-regex`、
+`response-header-replace-regex` 和 `response-body-replace-regex` 自己携带
+Action 正则，其中的 `$n` 继续按 Action 局部捕获输出，不转换为 `as` 变量。
+
+动作名称不允许使用变量替换，位置参数不能重新填写参数名称：
 
 ```text
 # 非法
-${actionName}(path="data.price")
-response.json.replace(${parameterName}="data.price")
+${actionName}("data.price")
+response.json.replace(path="data.price", value=9.99)
 ```
 
 变量只能出现在参数值中。
@@ -1013,7 +1189,7 @@ then
 例如：
 
 ```ini
-request.header.set(name="X-Test", value="a,b=c | if then")
+request.header.set("X-Test", "a,b=c | if then")
 ```
 
 以上内容必须被解析为一个完整的字符串参数。
@@ -1032,7 +1208,7 @@ request.header.set(name="X-Test", value="a,b=c | if then")
 如果用户输入以下内容：
 
 ```text
-9.99), reject(type="dict"
+9.99), reject("dict"
 ```
 
 重新解析可能导致 Rewrite 结构被改变。
@@ -1066,12 +1242,20 @@ request.header.set(name="X-Test", value="a,b=c | if then")
 13. `input` 和 `select` 参数只能使用 String 或 Number。
 14. Number 参数的默认值和所有可选值必须是合法数字。
 
+插件配置编辑器允许用户直接填写插件参数名称，不在添加条件或 Action 时查询
+`[Argument]` 是否已经存在；编辑期间只校验名称格式和使用类型。第 5 项的
+存在性校验仍在插件正式加载和参数绑定阶段执行。
+
+iOS 的本地 Rewrite 新增、编辑页面不提供“插件参数”变量来源，也不会使用临时
+参数类型放宽 Parser 校验。本地配置没有 `[Argument]` 声明和值来源，因此条件和
+Action 只能引用内置变量以及当前 Rewrite 的正则捕获变量。
+
 配置错误时应给出具体位置，例如：
 
 ```text
 Rewrite 第 18 行：未定义的参数 ${price2}
 Rewrite 第 21 行：正则 item 只有 2 个捕获组，不能引用 ${item.3}
-Rewrite 第 25 行：http-request 阶段不能引用 ${response.status}
+Rewrite 第 25 行：request 阶段不能引用 ${response.status}
 ```
 
 ## 18. 匹配阶段
@@ -1124,10 +1308,15 @@ Response Rewrite 第一版在收到响应 Header 后完成匹配：
 新语法通过行首阶段和 `if`、`then` 识别：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then reject(type="dict")
+request if ${url} ~= /^https:\/\/example\.com/ then reject_dict(200)
 ```
 
-旧语法和新语法可以同时存在，由解析器分别处理。不建议自动改写用户的旧配置。
+旧语法和新语法可以同时存在，由解析器分别处理。旧语法只作为输入兼容；
+Rewrite 的生成、保存和完整配置展示全部使用本文件定义的新语法。
+
+开发阶段曾使用过的 `http-request`、`http-response`、`"empty"`、
+`"image"`、`"json-object"` 和 `"json-array"` 尚未发布，
+不纳入兼容范围。
 
 ## 20. 已确认事项
 
@@ -1140,13 +1329,13 @@ http-request if ${url} ~= /^https:\/\/example\.com/ then reject(type="dict")
 允许：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com\/item\/(\d+)/ as item && ${request.method} == "GET" then request.header.set(name="X-Item", value="${item.1}")
+request if ${url} ~= /^https:\/\/example\.com\/item\/(\d+)/ as item && ${request.method} == "GET" then request.header.set("X-Item", "${item.1}")
 ```
 
 不允许：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/a\.example\.com\/(\d+)/ as item || ${url} ~= /^https:\/\/b\.example\.com/ then request.header.set(name="X-Item", value="${item.1}")
+request if ${url} ~= /^https:\/\/a\.example\.com\/(\d+)/ as item || ${url} ~= /^https:\/\/b\.example\.com/ then request.header.set("X-Item", "${item.1}")
 ```
 
 原因是第二个分支成功时没有产生 `item`，`${item.1}` 将没有确定值。
@@ -1158,8 +1347,8 @@ http-request if ${url} ~= /^https:\/\/a\.example\.com\/(\d+)/ as item || ${url} 
 例如：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.set(name="X-Value", value="first")
-http-request if ${url} ~= /\/api\// then request.header.set(name="X-Value", value="second")
+request if ${url} ~= /^https:\/\/example\.com/ then request.header.set("X-Value", "first")
+request if ${url} ~= /\/api\// then request.header.set("X-Value", "second")
 ```
 
 请求 `https://example.com/api/user` 会依次执行两条 Rewrite，因此最终 `X-Value` 为：
@@ -1180,7 +1369,7 @@ second
 例如：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.set(name="X-A", value="1") | request.body.mock(type="json", file="missing.json") | request.header.set(name="X-B", value="2")
+request if ${url} ~= /^https:\/\/example\.com/ then request.header.set("X-A", "1") | request.body.mock_file("json", "missing.json") | request.header.set("X-B", "2")
 ```
 
 如果 `missing.json` 不存在，`request.body.mock(...)` 执行失败，但 `X-A` 和 `X-B` 仍然都会被设置。
@@ -1195,7 +1384,7 @@ http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.set(name
 
 ```ini
 ^https://example\.com header-add X-Order old
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.set(name="X-Order", value="new")
+request if ${url} ~= /^https:\/\/example\.com/ then request.header.set("X-Order", "new")
 ```
 
 两条规则都会执行。因为新语法规则在后面，最终 `X-Order` 为：
@@ -1208,7 +1397,8 @@ new
 
 #### 7. URL rewrite 保持当前正则范围替换行为
 
-`url.replace(...)`、`redirect(...)` 保持当前 `header`、`302`、`307` 的 URL 替换行为：
+`url.replace(...)`、`redirect(...)` 保持当前 `header`、`302`、`307` 的 URL 替换行为。
+两者都使用 `if` 中唯一的必选 URL 正则，不在 Action 中重复填写正则：
 
 1. 将完整 URL 作为正则替换的输入。
 2. 只替换正则实际命中的范围。
@@ -1217,7 +1407,7 @@ new
 例如：
 
 ```ini
-http-request if ${url} ~= /^http:\/\/example\.com/ then url.replace(pattern=/^http:\/\/example\.com/, replacement="https://api.example.com")
+request if ${url} ~= /^http:\/\/example\.com/ then url.replace("https://api.example.com")
 ```
 
 输入：
@@ -1236,22 +1426,24 @@ https://api.example.com/item/123?region=CN
 
 #### 8. 不允许一条 Rewrite 同时修改请求和响应
 
-`http-request` 只能执行请求阶段 action，`http-response` 只能执行响应阶段 action。
+`request` 只能执行请求阶段 action，`response` 只能执行响应阶段 action。
 
 以下写法非法：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.set(name="X-Test", value="1") | response.header.set(name="X-Test", value="1")
+request if ${url} ~= /^https:\/\/example\.com/ then request.header.set("X-Test", "1") | response.header.set("X-Test", "1")
 ```
 
 需要分别写成两条 Rewrite：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.set(name="X-Test", value="1")
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.header.set(name="X-Test", value="1")
+request if ${url} ~= /^https:\/\/example\.com/ then request.header.set("X-Test", "1")
+response if ${url} ~= /^https:\/\/example\.com/ then response.header.set("X-Test", "1")
 ```
 
-`response.body.mock(...)` 是一个例外：它虽然生成响应，但行为是在请求阶段直接短路并返回 Mock 响应，因此只能用于 `http-request`。
+`response.body.mock(...)` 配置为 `response`，可以和
+`response.header.*` 写在同一条 Rewrite。编译时该规则只进入 Request 索引，
+运行时仍沿用 RejectRemote 提前短路并返回 Mock 响应。
 
 #### 9. 第一阶段不纳入 Body 条件匹配
 
@@ -1275,7 +1467,7 @@ ${response.json['path']}
 例如：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com\/item(?:\/(\d+))?/ as item then request.header.set(name="X-Item", value="${item.1}")
+request if ${url} ~= /^https:\/\/example\.com\/item(?:\/(\d+))?/ as item then request.header.set("X-Item", "${item.1}")
 ```
 
 正则可以匹配以下两个 URL：
@@ -1298,7 +1490,7 @@ https://example.com/item
 例如：
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com\/item(?:\/(\d+))?/ as item then request.header.set(name="X-Item", value="${item.1}") | request.header.set(name="X-Matched", value="true")
+request if ${url} ~= /^https:\/\/example\.com\/item(?:\/(\d+))?/ as item then request.header.set("X-Item", "${item.1}") | request.header.set("X-Matched", "true")
 ```
 
 请求 `https://example.com/item` 时，第一个 action 因 `${item.1}` 没有值而跳过，第二个 action 继续执行，最终只会设置：
@@ -1322,13 +1514,13 @@ X-Matched: true
 使用普通双引号字符串时，JSON 内部的双引号都必须写成 `\"`：
 
 ```ini
-response.body.mock(type="json", data="{\"code\":0,\"message\":\"a,b=c\"}", status=200)
+response.body.mock("json", "{\"code\":0,\"message\":\"a,b=c\"}", 200)
 ```
 
 使用反引号原始字符串时，可以直接照原内容书写：
 
 ```ini
-response.body.mock(type="json", data=`{"code":0,"message":"a,b=c"}`, status=200)
+response.body.mock("json", `{"code":0,"message":"a,b=c"}`, 200)
 ```
 
 两种写法最终生成的 Body 完全相同：
@@ -1340,7 +1532,7 @@ response.body.mock(type="json", data=`{"code":0,"message":"a,b=c"}`, status=200)
 原始字符串中的所有内容都按字面量处理，不执行 `${...}` 变量替换。假设插件参数 `${price}` 的值是 `9.99`：
 
 ```ini
-data=`{"text":"${price}"}`
+`{"text":"${price}"}`
 ```
 
 最终内容仍然是：
@@ -1352,7 +1544,7 @@ data=`{"text":"${price}"}`
 如果需要变量替换，必须使用普通双引号字符串：
 
 ```ini
-data="{\"text\":\"${price}\"}"
+"{\"text\":\"${price}\"}"
 ```
 
 最终内容为：

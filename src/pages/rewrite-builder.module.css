@@ -679,6 +679,18 @@
   padding-top: 0.65rem;
 }
 
+.actionNotice {
+  flex: 1 0 100%;
+  margin: 0;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(118, 87, 246, 0.14);
+  border-radius: 9px;
+  color: #716a7e;
+  background: var(--builder-accent-soft);
+  font-size: 0.7rem;
+  line-height: 1.55;
+}
+
 .actionConnector {
   align-self: flex-start;
   margin: -0.32rem 0 -0.32rem 1.18rem;
@@ -993,6 +1005,10 @@
 [data-theme='dark'] .nestedConditionGroup,
 [data-theme='dark'] .checkField {
   background: #1b1921;
+}
+
+[data-theme='dark'] .actionNotice {
+  color: #b8b1c4;
 }
 
 [data-theme='dark'] .groupLimit {

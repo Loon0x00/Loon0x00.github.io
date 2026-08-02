@@ -11,6 +11,7 @@ title: 复写（旧版语法）
 本文介绍 Loon 3.5.1 (978) 之前的 Rewrite 语法。该语法仅用于维护旧配置，不再扩展。
 
 新配置请使用 [新版 Rewrite 语法](./rewrite_v2.md)。
+也可以使用 [Rewrite 语法转换器](/rewrite-converter) 将旧配置转换为新语法。
 
 :::
 

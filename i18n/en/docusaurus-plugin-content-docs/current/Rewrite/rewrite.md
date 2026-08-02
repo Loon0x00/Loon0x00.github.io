@@ -11,6 +11,7 @@ title: Rewrite (Legacy Syntax)
 This page describes the Rewrite syntax used before Loon 3.5.1 (978). It remains available for maintaining old configurations but will not receive new features.
 
 Use the [new Rewrite syntax](./rewrite_v2.md) for new configurations.
+You can also use the [Rewrite Syntax Converter](/en/rewrite-converter) to migrate legacy configuration.
 
 :::
 

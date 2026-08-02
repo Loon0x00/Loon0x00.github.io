@@ -11,9 +11,17 @@
     "message": "Docs",
     "description": "Navbar item with label 文档"
   },
-  "item.label.Rewrite 生成器": {
-    "message": "Rewrite Builder",
-    "description": "Navbar item with label Rewrite 生成器"
+  "item.label.工具": {
+    "message": "Tools",
+    "description": "Navbar item with label 工具"
+  },
+  "item.label.Rewrite 编辑器": {
+    "message": "Rewrite Editor",
+    "description": "Navbar item with label Rewrite 编辑器"
+  },
+  "item.label.Rewrite 转换器": {
+    "message": "Rewrite Converter",
+    "description": "Navbar item with label Rewrite 转换器"
   },
   "item.label.教程": {
     "message": "Tutorials",

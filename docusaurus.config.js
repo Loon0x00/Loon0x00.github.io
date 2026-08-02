@@ -82,9 +82,19 @@ const config = {
             label: '文档',
           },
           {
-            to: '/rewrite-builder',
-            label: 'Rewrite 生成器',
+            type: 'dropdown',
+            label: '工具',
             position: 'left',
+            items: [
+              {
+                to: '/rewrite-builder',
+                label: 'Rewrite 编辑器',
+              },
+              {
+                to: '/rewrite-converter',
+                label: 'Rewrite 转换器',
+              },
+            ],
           },
           {to: '/blog', label: '教程', position: 'left'},
           {

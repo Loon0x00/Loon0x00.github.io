@@ -6,7 +6,7 @@ description: Rewrite configuration syntax supported since Loon 3.5.1 (978)
 
 # Rewrite
 
-Rewrite modifies HTTP requests or responses when specified conditions match. It can also return a redirect, reject response, or mock data immediately.
+Rewrite modifies HTTP requests or responses when specified conditions match. It can also replace a URL, return a redirect, reject a request, or generate mock data.
 
 This page describes the new syntax supported since Loon **3.5.1 (978)**.
 
@@ -18,53 +18,53 @@ Rewrite applies only to HTTP traffic and HTTPS traffic decrypted through MitM. I
 
 :::tip Visual builder
 
-Use the [Rewrite Builder](/rewrite-builder) to combine conditions and actions, then copy the generated configuration.
+Use the [Rewrite Builder](/en/rewrite-builder) to combine conditions and actions, then copy the generated configuration.
 
 :::
 
 ## Quick start
 
-Basic format:
+Each Rewrite entry is written on one line:
 
 ```text
 <phase> if <condition> then <action> [| <action> ...]
 ```
 
-Add a request header:
+Set a request header:
 
 ```ini
-http-request if ${url} ~= /^https:\/\/api\.example\.com/ then request.header.set(name="X-Loon", value="true")
+request if ${url} ~= /^https:\/\/api\.example\.com/ then request.header.set("X-Loon", "true")
 ```
 
 Modify a JSON response:
 
 ```ini
-http-response if ${url} ~= /^https:\/\/api\.example\.com\/profile$/ && ${response.status} == 200 then response.json.replace(path="data.vip", value=true)
+response if ${url} ~= /^https:\/\/api\.example\.com\/profile$/ && ${response.status} == 200 then response.json.replace("data.vip", true)
 ```
 
 Join multiple actions with `|`. They run from left to right:
 
 ```ini
-http-request if ${url} ~= /^https:\/\/api\.example\.com/ then request.header.set(name="X-Loon", value="true") | request.header.delete(name="Cookie")
+request if ${url} ~= /^https:\/\/api\.example\.com/ then request.header.set("X-Loon", "true") | request.header.del("Cookie")
 ```
-
-Each Rewrite entry must be written on one line.
 
 ## Phases
 
 | Phase | Timing | Available data |
 |---|---|---|
-| `http-request` | Before the request is sent | URL, request method, request headers |
-| `http-response` | After response headers are received | Request data, response status, response headers |
+| `request` | Before the request is sent | URL, request method, request headers |
+| `response` | After response headers are received | Request data, response status, response headers |
 
-Request and response changes must be configured separately:
+Request and response actions normally need separate entries:
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.set(name="X-Test", value="request")
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.header.set(name="X-Test", value="response")
+request if ${url} ~= /^https:\/\/example\.com/ then request.header.set("X-Test", "request")
+response if ${url} ~= /^https:\/\/example\.com/ then response.header.set("X-Test", "response")
 ```
 
-Although `response.body.mock(...)` creates a response, it returns that response during the request phase and can therefore be used only with `http-request`.
+A regular Rewrite entry cannot mix request actions with response actions.
+
+`response.body.mock(...)` is a special case. Its configured phase is still `response`, but Loon generates the response before sending the request upstream. See [Mock response body](#mock-response-body) for its restrictions.
 
 ## Conditions
 
@@ -72,18 +72,22 @@ Although `response.body.mock(...)` creates a response, it returns that response 
 
 | Operator | Description |
 |---|---|
-| `==` | Exact equality |
-| `~=` | Regular-expression match |
+| `==` | Compare the complete value for equality |
+| `~=` | Search for a regular-expression match |
+
+Match a request method:
 
 ```ini
-http-request if ${request.method} == "POST" then request.header.set(name="X-Method", value="POST")
+request if ${request.method} == "POST" then request.header.set("X-Method", "POST")
 ```
+
+Match a response header:
 
 ```ini
-http-response if ${response.header['Content-Type']} ~= /^application\/json(?:;|$)/i then response.header.set(name="X-JSON", value="true")
+response if ${response.header['Content-Type']} ~= /^application\/json(?:;|$)/i then response.header.set("X-JSON", "true")
 ```
 
-`~=` searches for a matching substring by default. Use `^` and `$` to match the complete value.
+`~=` searches for a matching substring by default. Use `^` and `$` when you need to match the complete value.
 
 ### Logical operators
 
@@ -91,10 +95,10 @@ http-response if ${response.header['Content-Type']} ~= /^application\/json(?:;|$
 |---|---|
 | `&&` | AND |
 | `\|\|` | OR |
-| `()` | Change precedence |
+| `()` | Change or preserve condition grouping |
 
 ```ini
-http-request if ${request.method} == "POST" && (${request.header['X-Region']} == "CN" || ${request.header['X-Region']} == "HK") then request.header.set(name="X-Matched", value="true")
+request if ${request.method} == "POST" && (${request.header['X-Region']} == "CN" || ${request.header['X-Region']} == "HK") then request.header.set("X-Matched", "true")
 ```
 
 Precedence:
@@ -103,21 +107,21 @@ Precedence:
 comparison operators > && > ||
 ```
 
-Add parentheses when an expression uses both `&&` and `||`.
+Use parentheses to make grouping explicit when combining `&&` and `||`. An explicit group with two or more direct conditions is preserved. Redundant parentheses around a single condition are omitted.
 
 ## Variables
 
-Every dynamic value uses `${...}`:
+General dynamic values use `${...}`:
 
 | Source | Example |
 |---|---|
-| Built-in variable | `${url}` |
+| Loon built-in variable | `${url}` |
 | Plugin argument | `${region}` |
-| Regular-expression capture | `${item.1}` |
+| Condition regex capture | `${item.1}` |
 
 ### Built-in variables
 
-| Variable | Type | Request phase | Response phase |
+| Variable | Type | `request` | `response` |
 |---|---|---:|---:|
 | `${url}` | String | ✓ | ✓ |
 | `${request.method}` | String | ✓ | ✓ |
@@ -125,31 +129,34 @@ Every dynamic value uses `${...}`:
 | `${response.status}` | Number | — | ✓ |
 | `${response.header['name']}` | String or null | — | ✓ |
 
-Header names are case-insensitive:
+Header name lookup is case-insensitive:
 
 ```text
 ${request.header['content-type']}
 ${request.header['Content-Type']}
 ```
 
-Response variables cannot be used during the request phase. The current version also does not support reading request or response bodies in a condition.
+Both expressions refer to the same header. The `request` phase cannot reference response variables that do not exist yet.
+
+The current version does not support reading a request or response body in an `if` condition, including `${request.body}`, `${response.body}`, and JSON key paths.
 
 ### Plugin arguments
 
-Declare arguments in the plugin's `[Argument]` section:
+Continue to declare plugin arguments in `[Argument]`:
 
 ```ini
 [Argument]
 enabled = switch,true,tag=Enabled
 price = input,9.99,type=number,tag=Price
 region = select,"CN","US","JP",tag=Region
+level = select,1,2,3,type=number,tag=Level
 ```
 
-Reference them directly in Rewrite:
+Reference the argument name directly:
 
 ```ini
 [Rewrite]
-http-response if ${enabled} == true && ${request.header['X-Region']} == ${region} then response.json.replace(path="data.price", value=${price})
+response if ${enabled} == true && ${level} == 2 && ${request.header['X-Region']} == ${region} then response.json.replace("data.price", ${price})
 ```
 
 | Control | Supported types | Default type |
@@ -158,24 +165,26 @@ http-response if ${enabled} == true && ${request.header['X-Region']} == ${region
 | `select` | String, Number | String |
 | `switch` | Boolean | Boolean |
 
-Use `type=number` when an `input` or `select` must return a number:
+Use `type=number` when an `input` or `select` should return a number:
 
 ```ini
 price = input,9.99,type=number
 level = select,1,2,3,type=number
 ```
 
-Arguments are data only. They cannot create new conditions or actions, and their values are not expanded a second time.
+Older plugins without `type` keep their existing behavior: `input` and `select` are parsed as String, while `switch` is parsed as Boolean. An argument is typed data only. It is not reparsed into a condition or action, and variable expansion does not run a second time.
 
-### Regular-expression captures
+A local Rewrite has no `[Argument]` source, so the local editor can use only built-in variables and regex captures declared by the current Rewrite entry.
 
-Save a match with `as <name>`:
+### Condition regex captures
+
+Add `as <name>` after a regex condition to save its match:
 
 ```ini
-http-request if ${url} ~= /^https:\/\/api\.shop\.com\/item\/(\d+)/ as item then request.header.set(name="X-Item-ID", value="${item.1}")
+request if ${url} ~= /^https:\/\/api\.shop\.com\/item\/(\d+)/ as item then request.header.set("X-Item-ID", "${item.1}")
 ```
 
-| Variable | Content |
+| Variable | Value |
 |---|---|
 | `${item.0}` | Complete match |
 | `${item.1}` | First capture group |
@@ -183,25 +192,46 @@ http-request if ${url} ~= /^https:\/\/api\.shop\.com\/item\/(\d+)/ as item then 
 
 Restrictions:
 
-1. `as` can be used only with `~=`.
-2. Each capture name must be unique within one Rewrite entry.
-3. A capture name cannot be the same as a plugin argument.
-4. A capture index cannot exceed the number of capture groups in the regular expression.
-5. The capture condition must run on every successful path and cannot be placed in an optional branch of `||`.
+1. `as` can be used only with a `~=` regex condition.
+2. Capture names must be unique within one Rewrite entry.
+3. A capture name cannot duplicate a plugin argument name.
+4. A capture index cannot exceed the regex capture-group count.
+5. A capture referenced by an action must exist on every successful expression path. It cannot be in an optional `||` branch.
 
 Valid:
 
 ```ini
-http-request if (${request.method} == "GET" || ${request.method} == "POST") && ${url} ~= /item\/(\d+)/ as item then request.header.set(name="X-Item", value="${item.1}")
+request if (${request.method} == "GET" || ${request.method} == "POST") && ${url} ~= /item\/(\d+)/ as item then request.header.set("X-Item", "${item.1}")
 ```
 
 Invalid:
 
 ```ini
-http-request if ${url} ~= /item\/(\d+)/ as item || ${request.header['X-Debug']} == "true" then request.header.set(name="X-Item", value="${item.1}")
+request if ${url} ~= /item\/(\d+)/ as item || ${request.header['X-Debug']} == "true" then request.header.set("X-Item", "${item.1}")
 ```
 
-If an optional capture group does not match, an action that references it fails and is skipped. Later actions continue to run.
+If the regex matches but a referenced optional capture group has no value, the current action fails and is skipped. Later actions continue to run.
+
+### Condition captures and action captures
+
+Condition regexes and action-owned regexes use separate capture syntax:
+
+| Source | Declaration | Reference | Scope |
+|---|---|---|---|
+| Regex in `if` | `~= /.../ as item` | `${item.0}`, `${item.1}` | Actions in the current Rewrite |
+| Regex in Header/Body Replace | Action Regex argument | `$0`, `$1` | Replacement argument of that action |
+
+For example:
+
+```ini
+request if ${url} ~= /^https:\/\/old\.example\.com(\/.*)$/ as item then url.replace("https://new.example.com${item.1}")
+```
+
+```ini
+request if ${url} ~= /^https:\/\/example\.com/ then request.body.replace(/price=(\d+)/, "amount=$1")
+```
+
+`${item.1}` in the first entry comes from the `if` condition. `$1` in the second comes from the regex owned by `request.body.replace`. `$n` is not a general Rewrite variable, cannot cross action boundaries, and is invalid in `url.replace("$1")`.
 
 ## Values and strings
 
@@ -215,11 +245,11 @@ If an optional capture group does not match, an action that references it fails 
 | Null | `null` |
 | Regex | `/^https:\/\/example\.com/i` |
 
-Fixed strings must use double quotes. These two values have different types:
+Fixed strings require double quotes. These values have different types:
 
 ```text
-value=9.99      # Number
-value="9.99"    # String
+9.99      # Number
+"9.99"    # String
 ```
 
 ### Regular expressions
@@ -234,22 +264,22 @@ Supported flags:
 
 | Flag | Description |
 |---|---|
-| `i` | Ignore case |
+| `i` | Case-insensitive |
 | `m` | Multiline mode |
 | `s` | Let `.` match line breaks |
 
-`${...}` is not expanded inside a regular-expression literal. To supply a pattern through a plugin argument, place the variable on the right side of `~=`:
+`${...}` is not expanded inside a regex literal. To provide the complete regex through a plugin argument, place the variable directly on the right side of `~=`:
 
 ```ini
-http-request if ${url} ~= ${urlPattern} then request.header.set(name="X-Matched", value="true")
+request if ${url} ~= ${urlPattern} then request.header.set("X-Matched", "true")
 ```
 
 ### Double-quoted strings
 
-Double-quoted strings support variables:
+Double-quoted strings support `${...}` templates:
 
 ```ini
-request.header.set(name="X-Info", value="price=${price}, region=${region}")
+request.header.set("X-Info", "price=${price}, region=${region}")
 ```
 
 Supported escapes:
@@ -258,212 +288,342 @@ Supported escapes:
 |---|---|
 | `\"` | Double quote |
 | `\\` | Backslash |
-| `\n` | Line feed |
+| `\n` | Line break |
 | `\r` | Carriage return |
 | `\t` | Tab |
 | `\${` | Literal `${` |
 
+Use single quotes around a header name in a variable expression:
+
+```ini
+request.header.set("X-Origin", "UA=${request.header['User-Agent']}")
+```
+
 ### Raw strings
 
-Use backticks for fixed JSON or HTML to reduce escaping:
+Use backticks for fixed JSON, HTML, or other text containing many quotes:
 
 ```ini
-http-request if ${url} ~= /^https:\/\/api\.example\.com/ then response.body.mock(type="json", data=`{"code":0,"message":"ok"}`, status=200)
+response if ${url} ~= /^https:\/\/api\.example\.com/ then response.body.mock("json", `{"code":0,"message":"ok"}`, 200)
 ```
 
-Raw strings do not process escapes or expand `${...}`. Two consecutive backticks represent one literal backtick.
+A raw string:
 
-Use a double-quoted string when variables are needed:
+- Does not process backslash escapes.
+- Does not expand `${...}`.
+- Treats commas, equals signs, parentheses, and double quotes as content.
+- Uses two consecutive backticks for one literal backtick.
+
+Use a regular double-quoted string when variables are required:
 
 ```ini
-http-request if ${url} ~= /^https:\/\/api\.example\.com\/item\/(\d+)/ as item then response.body.mock(type="json", data="{\"item\":\"${item.1}\"}", status=200)
+response if ${url} ~= /^https:\/\/api\.example\.com\/item\/(\d+)/ as item then response.body.mock("json", "{\"item\":\"${item.1}\"}", 200)
 ```
 
-The new syntax does not split a line at spaces, so `\x20` is unnecessary.
+The new syntax does not split an entry on spaces, so `\x20` is no longer needed to represent a space.
 
 ## Actions
 
-Every action uses named arguments:
+All actions use positional arguments:
 
 ```text
-action(name=value, name=value)
+action(value, value)
 ```
 
-Action names and argument names cannot use variables.
+Arguments must follow the order in the method declaration. Argument names are not allowed:
 
-### URL
+```text
+# Valid
+redirect(302, "https://example.com")
+
+# Invalid
+redirect(status=302, location="https://example.com")
+```
+
+Optional arguments can be omitted only from the right. In the declarations below, `[...]` marks optional trailing arguments and is not part of the configuration syntax.
+
+### Action reference
+
+```text
+url.replace(String)
+redirect(Number, String)
+reject(Number[, String])
+reject_img(Number)
+reject_dict(Number)
+reject_array(Number)
+reject_video(Number)
+
+request.header.add(String, String)
+request.header.set(String, String)
+request.header.del(String)
+request.header.replace(String, Regex, RegexReplacement)
+
+response.header.add(String, String)
+response.header.set(String, String)
+response.header.del(String)
+response.header.replace(String, Regex, RegexReplacement)
+
+request.body.replace(Regex, RegexReplacement)
+response.body.replace(Regex, RegexReplacement)
+
+request.json.add(String, Any)
+request.json.delete(String)
+request.json.replace(String, Any)
+request.json.jq(String)
+request.json.jq_file(String)
+
+response.json.add(String, Any)
+response.json.delete(String)
+response.json.replace(String, Any)
+response.json.jq(String)
+response.json.jq_file(String)
+
+request.body.mock(String, String[, Boolean])
+request.body.mock_file(String, String[, Boolean])
+
+response.body.mock(String, String[, Number[, Boolean]])
+response.body.mock_file(String, String[, Number[, Boolean]])
+```
+
+A `RegexReplacement` is still written as a string. `$0` through `$n` refer to matches from the regex owned by the same action.
+
+### URL changes
 
 #### `url.replace`
 
-Run a regular-expression replacement on the complete URL:
+`url.replace` uses the single mandatory URL regex in `if` as its replacement range. The action does not repeat that regex:
 
 ```ini
-http-request if ${url} ~= /^http:\/\/example\.com/ then url.replace(pattern=/^http:\/\/example\.com/, replacement="https://api.example.com")
+request if ${url} ~= /^https:\/\/old\.example\.com(\/.*)$/ as urlMatch then url.replace("https://new.example.com${urlMatch.1}")
 ```
 
-| Argument | Type | Description |
-|---|---|---|
-| `pattern` | Regex | Replacement pattern |
-| `replacement` | String | Replacement text |
+Only the matched range is replaced. Unmatched URL content is preserved.
 
-Only the matched range is replaced; the rest of the URL is preserved.
+Restrictions:
+
+1. `if` must contain exactly one `${url} ~= /.../` condition that every successful path passes through.
+2. The URL regex cannot be in an optional `||` branch.
+3. Use `as` and `${name.n}` when capture groups are needed.
+4. `$n` is not allowed in the `url.replace` argument.
 
 #### `redirect`
 
 ```ini
-http-request if ${url} ~= /^http:\/\/example\.com/ then redirect(status=302, location="https://new.example.com")
+request if ${url} ~= /^http:\/\/example\.com/ then redirect(302, "https://api.example.com")
 ```
 
-| Argument | Type | Description |
-|---|---|---|
-| `status` | Number | `302` or `307` |
-| `location` | String | Text that replaces the URL pattern's matched range |
+Arguments:
 
-When `redirect` is used, the condition must contain exactly one required URL regular expression.
+| Position | Type | Description |
+|---:|---|---|
+| 1 | Number | Status code; currently `302` or `307` |
+| 2 | String | Replacement for the URL regex match |
+
+`redirect` follows the same mandatory URL regex rules as `url.replace` and preserves unmatched URL content.
+
+For this input:
+
+```text
+http://example.com/item/123?region=CN
+```
+
+The example produces:
+
+```text
+https://api.example.com/item/123?region=CN
+```
 
 ### Reject
 
+| Action | Response |
+|---|---|
+| `reject(status)` | Specified status, empty body |
+| `reject(status, body)` | Specified status and UTF-8 text |
+| `reject_img(status)` | 1×1 GIF |
+| `reject_dict(status)` | JSON object `{}` |
+| `reject_array(status)` | JSON array `[]` |
+| `reject_video(status)` | Blank video |
+
+The status must be an integer from `100` through `599`.
+
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com\/ads/ then reject(status=200, body="json-object")
+request if ${url} ~= /^https:\/\/example\.com\/ads/ then reject_dict(200)
+request if ${url} ~= /^https:\/\/example\.com\/blocked/ then reject(451, "Unavailable for legal reasons")
 ```
 
-Supported combinations:
-
-| `status` | `body` | Response |
-|---:|---|---|
-| `404` | `"empty"` | Empty body |
-| `200` | `"empty"` | Empty body |
-| `200` | `"image"` | 1×1 GIF |
-| `200` | `"json-object"` | `{}` |
-| `200` | `"json-array"` | `[]` |
-| `200` | `"video"` | Blank video |
+`reject(200, "{}")` returns plain text. Use `reject_dict(200)` or `reject_array(200)` when a JSON Content-Type is required.
 
 ### Headers
 
 Request headers:
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.add(name="X-Loon", value="true")
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.set(name="User-Agent", value="Loon")
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.delete(name="Cookie")
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.replace(name="User-Agent", pattern=/iPhone OS \d+/, replacement="iPhone OS 18")
+request if ${url} ~= /^https:\/\/example\.com/ then request.header.add("X-Loon", "true")
+request if ${url} ~= /^https:\/\/example\.com/ then request.header.set("User-Agent", "Loon")
+request if ${url} ~= /^https:\/\/example\.com/ then request.header.del("Cookie")
+request if ${url} ~= /^https:\/\/example\.com/ then request.header.replace("User-Agent", /iPhone OS (\d+)/, "iPhone OS $1")
 ```
 
 Response headers:
 
 ```ini
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.header.add(name="X-Loon", value="true")
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.header.set(name="Cache-Control", value="no-cache")
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.header.delete(name="Set-Cookie")
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.header.replace(name="Content-Type", pattern=/; charset=.+$/i, replacement="")
+response if ${url} ~= /^https:\/\/example\.com/ then response.header.add("X-Loon", "true")
+response if ${url} ~= /^https:\/\/example\.com/ then response.header.set("Cache-Control", "no-cache")
+response if ${url} ~= /^https:\/\/example\.com/ then response.header.del("Set-Cookie")
+response if ${url} ~= /^https:\/\/example\.com/ then response.header.replace("Content-Type", /^(.+); charset=.+$/i, "$1")
 ```
 
-| Action | Arguments |
+| Action | Argument order |
 |---|---|
-| `*.header.add` | `name=String, value=String` |
-| `*.header.set` | `name=String, value=String` |
-| `*.header.delete` | `name=String` |
-| `*.header.replace` | `name=String, pattern=Regex, replacement=String` |
+| `*.header.add` | Header name, header value |
+| `*.header.set` | Header name, header value |
+| `*.header.del` | Header name |
+| `*.header.replace` | Header name, regex, replacement |
 
-### Body regular-expression replacement
+The replacement in `header.replace` supports `$0` and `$1` through `$n` from the action's regex, as well as general `${...}` variables.
+
+### Body regex replacement
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.body.replace(pattern=/"price":\s*[0-9.]+/, replacement="\"price\":9.99")
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.body.replace(pattern=/"enabled":\s*false/, replacement="\"enabled\":true")
+request if ${url} ~= /^https:\/\/example\.com/ then request.body.replace(/"price":\s*([0-9.]+)/, "\"originalPrice\":$1")
+response if ${url} ~= /^https:\/\/example\.com/ then response.body.replace(/"enabled":\s*(false)/, "\"enabled\":$1")
 ```
 
-Arguments:
+Argument order:
 
 ```text
-pattern=Regex, replacement=String
+Regex, RegexReplacement
 ```
+
+In the replacement, `$0` is the complete match and `$1` through `$n` are capture groups from the current action's regex. General `${...}` variables are also supported.
 
 ### JSON
 
 Request JSON:
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.json.add(path="data.price", value=9.99)
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.json.delete(path="data.ads")
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.json.replace(path="data.price", value=${price})
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.json.jq(filter=".data.ads = []")
+request if ${url} ~= /^https:\/\/example\.com/ then request.json.add("data.price", 9.99)
+request if ${url} ~= /^https:\/\/example\.com/ then request.json.delete("data.ads")
+request if ${url} ~= /^https:\/\/example\.com/ then request.json.replace("data.price", ${price})
+request if ${url} ~= /^https:\/\/example\.com/ then request.json.jq(".data.ads = []")
+request if ${url} ~= /^https:\/\/example\.com/ then request.json.jq_file("request-filter.jq")
 ```
 
 Response JSON:
 
 ```ini
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.json.add(path="data.price", value=9.99)
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.json.delete(path="data.ads")
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.json.replace(path="data.price", value=${price})
-http-response if ${url} ~= /^https:\/\/example\.com/ then response.json.jq(file="response-filter.jq")
+response if ${url} ~= /^https:\/\/example\.com/ then response.json.add("data.price", 9.99)
+response if ${url} ~= /^https:\/\/example\.com/ then response.json.delete("data.ads")
+response if ${url} ~= /^https:\/\/example\.com/ then response.json.replace("data.price", ${price})
+response if ${url} ~= /^https:\/\/example\.com/ then response.json.jq(".data.ads = []")
+response if ${url} ~= /^https:\/\/example\.com/ then response.json.jq_file("response-filter.jq")
 ```
 
-| Action | Arguments |
+| Action | Argument order |
 |---|---|
-| `*.json.add` | `path=String, value=Any` |
-| `*.json.delete` | `path=String` |
-| `*.json.replace` | `path=String, value=Any` |
-| `*.json.jq` | `filter=String` or `file=String` |
+| `*.json.add` | Key path, value |
+| `*.json.delete` | Key path |
+| `*.json.replace` | Key path, value |
+| `*.json.jq` | Inline JQ |
+| `*.json.jq_file` | Plugin resource file |
 
-JSON actions run only when the body is valid JSON. Key paths use dot notation and `[n]` for array indexes:
+JSON actions apply only when the body is valid JSON. Key paths use dot notation and `[n]` for an array index:
 
 ```text
 data.apps[0].appName
 ```
 
-`value` can be a String, Number, Boolean, null, or variable.
+A JSON value can be a String, Number, Boolean, null, or variable.
 
-### Mock body
+### Mock request body
 
-Mock a request body:
-
-```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.body.mock(type="json", data=`{"price":9.99}`)
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.body.mock(type="json", file="request_body.json")
-```
-
-Mock a response body:
+Inline body:
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then response.body.mock(type="json", data=`{"code":0}`, status=200)
-http-request if ${url} ~= /^https:\/\/example\.com/ then response.body.mock(type="json", file="response_body.json", status=200)
+request if ${url} ~= /^https:\/\/example\.com/ then request.body.mock("json", `{"price":9.99}`)
 ```
 
-| Argument | Description |
+Plugin resource file:
+
+```ini
+request if ${url} ~= /^https:\/\/example\.com/ then request.body.mock_file("json", "request_body.json")
+```
+
+Base64 data:
+
+```ini
+request if ${url} ~= /^https:\/\/example\.com/ then request.body.mock("png", "iVBORw0KGgo...", true)
+```
+
+| Method | Argument order |
 |---|---|
-| `type` | Body type |
-| `data` | Data written directly |
-| `file` | Read from a plugin file; mutually exclusive with `data` |
-| `base64` | Whether the data is Base64 encoded; defaults to `false` |
-| `status` | Response status code; defaults to `200`; response only |
+| `request.body.mock` | Content type, inline body, optional Base64 |
+| `request.body.mock_file` | Content type, resource file, optional Base64 |
 
-Supported `type` values:
+Base64 defaults to `false`.
+
+### Mock response body
+
+Inline body:
+
+```ini
+response if ${url} ~= /^https:\/\/example\.com/ then response.body.mock("json", `{"code":0}`, 200)
+```
+
+Plugin resource file:
+
+```ini
+response if ${url} ~= /^https:\/\/example\.com/ then response.body.mock_file("json", "response_body.json", 200)
+```
+
+Base64 data:
+
+```ini
+response if ${url} ~= /^https:\/\/example\.com/ then response.body.mock("png", "iVBORw0KGgo...", 200, true)
+```
+
+| Method | Argument order |
+|---|---|
+| `response.body.mock` | Content type, inline body, optional status, optional Base64 |
+| `response.body.mock_file` | Content type, resource file, optional status, optional Base64 |
+
+The status defaults to `200`, and Base64 defaults to `false`. To provide Base64, the status argument must be present first.
+
+A Rewrite containing a response mock has these restrictions:
+
+1. It can contain only one `response.body.mock` or `response.body.mock_file`.
+2. Apart from the mock, it can contain only `response.header.*` actions.
+3. Its `if` condition and mock arguments cannot reference `${response.status}` or `${response.header['name']}`, because no response exists yet.
+4. Loon creates the mock response first, then runs all header actions in configuration order.
+5. Loon removes `Transfer-Encoding` and recalculates `Content-Length` from the final body.
+
+Supported content types:
 
 ```text
 json, text, css, html, javascript, plain,
 png, gif, jpeg, tiff, svg, mp4, form-data
 ```
 
-Use `file` for medium or large data.
+Use the corresponding `*_file` method for medium or large data.
 
 ## Execution rules
 
 ### Multiple Rewrite entries
 
-Within one phase, every matching Rewrite entry runs in configuration order:
+All matching Rewrite entries in the same phase run in configuration order:
 
 ```ini
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.set(name="X-Value", value="first")
-http-request if ${url} ~= /\/api\// then request.header.set(name="X-Value", value="second")
+request if ${url} ~= /^https:\/\/example\.com/ then request.header.set("X-Value", "first")
+request if ${url} ~= /\/api\// then request.header.set("X-Value", "second")
 ```
 
-For a request to `https://example.com/api/user`, the final value is:
+A request to `https://example.com/api/user` ends with:
 
 ```http
 X-Value: second
 ```
 
-Source priority is **local configuration > plugins**. Entries in the same file run from top to bottom.
+Source priority is **local configuration > plugins**. Entries from the same source run from top to bottom.
 
 ### Multiple actions
 
@@ -471,32 +631,38 @@ Actions in one Rewrite entry run from left to right in `|` order.
 
 If an action fails at runtime:
 
-1. Keep changes made by earlier actions.
-2. Skip the current action and record the error.
-3. Continue with later actions.
+1. Earlier completed changes are kept.
+2. The failing action is skipped and an error is recorded.
+3. Later actions continue to run.
 
-Invalid argument names, argument types, or regular expressions are configuration errors and cause the complete Rewrite entry to be rejected during loading.
+An invalid argument count, argument type, or regular expression is a configuration error. Loon rejects the complete Rewrite entry when loading it instead of handling the issue at runtime.
 
-## New and legacy syntax
+## Old and new syntax
 
-The legacy syntax remains compatible and can be mixed with the new syntax:
+Legacy and new syntax can be used together:
 
 ```ini
 [Rewrite]
 ^https://example\.com header-add X-Order old
-http-request if ${url} ~= /^https:\/\/example\.com/ then request.header.set(name="X-Order", value="new")
+request if ${url} ~= /^https:\/\/example\.com/ then request.header.set("X-Order", "new")
 ```
 
-Both syntaxes enter the same execution sequence and run in configuration order. Loon does not rewrite old configurations automatically.
+After parsing, both forms enter the same execution sequence and run in configuration order. Syntax type does not change priority.
 
-Common migration mappings:
+Legacy syntax is accepted only as input compatibility. Generated, saved, and fully displayed Rewrite configuration uses the new syntax.
+
+Common mappings:
 
 | Legacy action | New action |
 |---|---|
 | `header` | `url.replace(...)` |
 | `302`, `307` | `redirect(...)` |
-| `reject-*` | `reject(...)` |
-| `header-*` | `request.header.*` |
+| `reject`, `reject-200` | `reject(...)` |
+| `reject-img` | `reject_img(...)` |
+| `reject-dict` | `reject_dict(...)` |
+| `reject-array` | `reject_array(...)` |
+| `reject-video` | `reject_video(...)` |
+| `header-add`, `header-replace`, `header-del` | `request.header.*` |
 | `response-header-*` | `response.header.*` |
 | `request-body-replace-regex` | `request.body.replace(...)` |
 | `response-body-replace-regex` | `response.body.replace(...)` |
@@ -504,6 +670,10 @@ Common migration mappings:
 | `response-body-json-*` | `response.json.*` |
 | `mock-request-body` | `request.body.mock(...)` |
 | `mock-response-body` | `response.body.mock(...)` |
+
+In legacy `header`, `302`, and `307` entries, `$n` in the replacement refers to the leading URL regex. During conversion, Loon assigns a capture name and converts `$n` to `${name.n}`. `$n` belonging to the regex in a Header/Body Replace action remains action-local.
+
+The development-only `http-request`, `http-response`, and named-argument forms were never released and are not compatibility syntax.
 
 ## Complete example
 
@@ -514,26 +684,36 @@ price = input,9.99,type=number,tag=Price
 region = select,"CN","US","JP",tag=Region
 
 [Rewrite]
-http-request if ${enabled} == true && ${request.method} == "GET" && ${url} ~= /^https:\/\/api\.shop\.com\/item\/(\d+)/ as item && ${request.header['X-Region']} == ${region} then request.header.set(name="X-Item-ID", value="${item.1}") | request.header.set(name="X-Region", value="${region}")
+request if ${enabled} == true && ${request.method} == "GET" && ${url} ~= /^https:\/\/api\.shop\.com\/item\/(\d+)/ as item && ${request.header['X-Region']} == ${region} then request.header.set("X-Item-ID", "${item.1}") | request.header.set("X-Region", "${region}")
 
-http-response if ${enabled} == true && ${url} ~= /^https:\/\/api\.shop\.com\/item\/(\d+)/ as item && ${response.status} == 200 then response.json.replace(path="data.price", value=${price}) | response.header.set(name="X-Rewritten-Item", value="${item.1}")
+response if ${enabled} == true && ${url} ~= /^https:\/\/api\.shop\.com\/item\/(\d+)/ as item && ${response.status} == 200 then response.json.replace("data.price", ${price}) | response.header.set("X-Rewritten-Item", "${item.1}")
 ```
 
 ## Configuration validation
 
-When loading the configuration, Loon checks:
+When loading configuration, Loon validates:
 
-- Whether referenced arguments and captures exist.
-- Whether capture names are duplicated or conflict.
-- Whether a capture index is out of range.
-- Whether variables and actions are available in the current phase.
-- Whether action argument names and types are valid.
-- Whether regular expressions compile.
+- Plugin arguments and capture names are valid, defined, and conflict-free.
+- Capture indexes do not exceed regex capture-group counts.
+- A referenced capture exists on every successful expression path.
+- Variables and actions are available in the selected phase.
+- Action argument counts, order, and types are correct.
+- URL replacement and redirect actions have one mandatory URL regex.
+- Regular expressions compile successfully.
+- Response mock actions follow their action-combination and variable restrictions.
 
-An error includes the line number and reason:
+Errors include a line number and reason:
 
 ```text
 Rewrite line 18: undefined argument ${price2}
-Rewrite line 21: capture item has only 2 groups; ${item.3} is invalid
-Rewrite line 25: ${response.status} is unavailable during http-request
+Rewrite line 21: regex item has 2 capture groups; ${item.3} is invalid
+Rewrite line 25: the request phase cannot reference ${response.status}
 ```
+
+## Developer notes
+
+- The parser must recognize string, raw-string, regex, and variable boundaries. It must not split a line directly on spaces or commas.
+- `if`, `then`, `&&`, `||`, `|`, `,`, and parentheses have syntax meaning only at the outermost level.
+- Plugin arguments must enter the syntax tree as typed data. Do not substitute their text and parse the line again.
+- Variables expand once. `${...}` inside an argument value does not trigger a second expansion.
+- Positional argument order for a released action remains stable. New optional arguments can be appended only at the end.

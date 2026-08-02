@@ -42,11 +42,11 @@ const EN_TEXT = {
   '使用 jq 修改响应 JSON': 'Modify response JSON with jq',
   'Mock 请求 Body': 'Mock request body',
   'Mock 响应 Body': 'Mock response body',
-  '404 · 空 Body': '404 · Empty body',
-  '200 · 空 Body': '200 · Empty body',
-  '200 · JSON 对象 {}': '200 · JSON object {}',
-  '200 · JSON 数组 []': '200 · JSON array []',
-  '200 · 空白视频': '200 · Blank video',
+  '空 Body': 'Empty body',
+  '自定义文本': 'Custom text',
+  'JSON 对象 {}': 'JSON object {}',
+  'JSON 数组 []': 'JSON array []',
+  '空白视频': 'Blank video',
   '请求 Header 清理': 'Clean request headers',
   '修改 JSON 响应': 'Modify a JSON response',
   'Mock JSON 响应': 'Mock a JSON response',
@@ -85,12 +85,14 @@ const EN_TEXT = {
   '值': 'Value',
   '输入值': 'Enter a value',
   'price 或 item.1': 'price or item.1',
-  'URL 替换正则': 'URL replacement pattern',
+  'URL 替换内容（使用 IF 正则）': 'URL replacement (uses the IF regex)',
   '替换内容': 'Replacement',
   '状态码': 'Status code',
   '响应类型': 'Response type',
+  '响应文本': 'Response text',
   'Header 值': 'Header value',
   '支持 ${...}': 'Supports ${...}',
+  '支持 $n 与 ${...}': 'Supports $n and ${...}',
   '允许留空': 'May be empty',
   '来源': 'Source',
   'jq 表达式': 'jq expression',
@@ -104,10 +106,26 @@ const EN_TEXT = {
   '数据为 Base64': 'Data is Base64 encoded',
   '删除 Action': 'Delete action',
   '至少需要一个 Action': 'At least one action is required',
-  'redirect 需要一个必选的 URL 正则条件':
-    'redirect requires one mandatory URL regex condition',
-  'redirect 只能对应一个必选的 URL 正则条件':
-    'redirect can use only one mandatory URL regex condition',
+  'URL 修改需要一个必选的 URL 正则条件':
+    'URL actions require one mandatory URL regex condition',
+  'URL 修改只能对应一个必选的 URL 正则条件':
+    'URL actions can use only one mandatory URL regex condition',
+  'URL 修改内容不能使用 $n，请在条件中使用 as 并引用 ${名称.n}':
+    'URL replacements cannot use $n; add as to the condition and reference ${name.n}',
+  'Reject 状态码必须是 100 到 599 的整数':
+    'Reject status must be an integer from 100 through 599',
+  'Response Mock 状态码必须是 100 到 599 的整数':
+    'Response mock status must be an integer from 100 through 599',
+  '一条 Rewrite 只能包含一个 Response Mock':
+    'A Rewrite can contain only one response mock',
+  'Response Mock 只能与响应 Header Action 组合':
+    'A response mock can be combined only with response header actions',
+  'Response Mock 条件不能引用响应状态码或响应 Header':
+    'A response mock condition cannot reference response status or response headers',
+  'Response Mock 参数不能引用尚未生成的响应变量':
+    'Response mock arguments cannot reference response variables that do not exist yet',
+  'Response Mock 会在请求发出前生成响应，只能与响应 Header Action 组合。':
+    'A response mock is created before the request is sent and can be combined only with response header actions.',
   'Header 名称不能为空': 'Header name cannot be empty',
   '插件参数名格式不正确': 'Plugin argument name is invalid',
   '正则内容不能为空': 'Regular expression cannot be empty',
@@ -117,7 +135,6 @@ const EN_TEXT = {
   '条件组不能为空': 'A condition group cannot be empty',
   'JSON 数字值格式不正确': 'JSON number format is invalid',
   'JSON 变量名格式不正确': 'JSON variable name is invalid',
-  'URL 替换正则不能为空': 'URL replacement pattern cannot be empty',
   'URL 替换内容不能为空': 'URL replacement cannot be empty',
   '重定向地址不能为空': 'Redirect location cannot be empty',
   'Header 值不能为空': 'Header value cannot be empty',
@@ -133,6 +150,7 @@ const EN_TEXT = {
   '像搭积木一样组合匹配条件与 Action，实时生成可复制的新 Rewrite 语法。':
     'Combine conditions and actions visually, then copy the generated Rewrite syntax.',
   '查看语法文档 →': 'Read the syntax guide →',
+  '转换旧版配置 →': 'Convert legacy configuration →',
   '仅在浏览器本地生成，不会上传配置':
     'Generated locally in your browser; no configuration is uploaded',
   '加载示例': 'Load example',
@@ -192,43 +210,43 @@ function useBuilderText() {
 
 const PHASES = [
   {
-    value: 'http-request',
+    value: 'request',
     label: '请求阶段',
     hint: '请求发出前',
   },
   {
-    value: 'http-response',
+    value: 'response',
     label: '响应阶段',
     hint: '收到响应 Header 后',
   },
 ];
 
 const CONDITION_FIELDS = [
-  {value: 'url', label: 'URL', phases: ['http-request', 'http-response']},
+  {value: 'url', label: 'URL', phases: ['request', 'response']},
   {
     value: 'request.method',
     label: '请求方法',
-    phases: ['http-request', 'http-response'],
+    phases: ['request', 'response'],
   },
   {
     value: 'request.header',
     label: '请求 Header',
-    phases: ['http-request', 'http-response'],
+    phases: ['request', 'response'],
   },
   {
     value: 'response.status',
     label: '响应状态码',
-    phases: ['http-response'],
+    phases: ['response'],
   },
   {
     value: 'response.header',
     label: '响应 Header',
-    phases: ['http-response'],
+    phases: ['response'],
   },
   {
     value: 'plugin',
     label: '插件参数',
-    phases: ['http-request', 'http-response'],
+    phases: ['request', 'response'],
   },
 ];
 
@@ -239,7 +257,6 @@ const ACTION_GROUPS = [
       'url.replace',
       'redirect',
       'reject',
-      'response.body.mock',
     ],
   },
   {
@@ -247,7 +264,7 @@ const ACTION_GROUPS = [
     actions: [
       'request.header.add',
       'request.header.set',
-      'request.header.delete',
+      'request.header.del',
       'request.header.replace',
     ],
   },
@@ -267,7 +284,7 @@ const ACTION_GROUPS = [
     actions: [
       'response.header.add',
       'response.header.set',
-      'response.header.delete',
+      'response.header.del',
       'response.header.replace',
     ],
   },
@@ -279,6 +296,7 @@ const ACTION_GROUPS = [
       'response.json.delete',
       'response.json.replace',
       'response.json.jq',
+      'response.body.mock',
     ],
   },
 ];
@@ -286,16 +304,14 @@ const ACTION_GROUPS = [
 const ACTION_DEFINITIONS = {
   'url.replace': {
     label: '替换 URL',
-    phase: 'http-request',
+    phase: 'request',
     defaults: {
-      pattern: '^http:\\/\\/example[.]com',
-      flags: '',
       replacement: 'https://example.com',
     },
   },
   redirect: {
     label: '返回重定向',
-    phase: 'http-request',
+    phase: 'request',
     defaults: {
       status: '302',
       location: 'https://new.example.com',
@@ -303,29 +319,31 @@ const ACTION_DEFINITIONS = {
   },
   reject: {
     label: '拒绝请求',
-    phase: 'http-request',
+    phase: 'request',
     defaults: {
-      preset: '200|json-object',
+      mode: 'json-object',
+      status: '200',
+      body: '',
     },
   },
   'request.header.add': {
     label: '添加请求 Header',
-    phase: 'http-request',
+    phase: 'request',
     defaults: {name: 'X-Loon', value: 'true'},
   },
   'request.header.set': {
     label: '设置请求 Header',
-    phase: 'http-request',
+    phase: 'request',
     defaults: {name: 'X-Loon', value: 'true'},
   },
-  'request.header.delete': {
+  'request.header.del': {
     label: '删除请求 Header',
-    phase: 'http-request',
+    phase: 'request',
     defaults: {name: 'Cookie'},
   },
   'request.header.replace': {
     label: '正则替换请求 Header',
-    phase: 'http-request',
+    phase: 'request',
     defaults: {
       name: 'User-Agent',
       pattern: 'iPhone OS \\d+',
@@ -335,22 +353,22 @@ const ACTION_DEFINITIONS = {
   },
   'response.header.add': {
     label: '添加响应 Header',
-    phase: 'http-response',
+    phase: 'response',
     defaults: {name: 'X-Loon', value: 'true'},
   },
   'response.header.set': {
     label: '设置响应 Header',
-    phase: 'http-response',
+    phase: 'response',
     defaults: {name: 'Cache-Control', value: 'no-cache'},
   },
-  'response.header.delete': {
+  'response.header.del': {
     label: '删除响应 Header',
-    phase: 'http-response',
+    phase: 'response',
     defaults: {name: 'Set-Cookie'},
   },
   'response.header.replace': {
     label: '正则替换响应 Header',
-    phase: 'http-response',
+    phase: 'response',
     defaults: {
       name: 'Content-Type',
       pattern: '; charset=.+$',
@@ -360,7 +378,7 @@ const ACTION_DEFINITIONS = {
   },
   'request.body.replace': {
     label: '正则替换请求 Body',
-    phase: 'http-request',
+    phase: 'request',
     defaults: {
       pattern: '"price":\\s*[0-9.]+',
       flags: '',
@@ -369,7 +387,7 @@ const ACTION_DEFINITIONS = {
   },
   'response.body.replace': {
     label: '正则替换响应 Body',
-    phase: 'http-response',
+    phase: 'response',
     defaults: {
       pattern: '"enabled":\\s*false',
       flags: '',
@@ -378,7 +396,7 @@ const ACTION_DEFINITIONS = {
   },
   'request.json.add': {
     label: '添加请求 JSON 字段',
-    phase: 'http-request',
+    phase: 'request',
     defaults: {
       path: 'data.price',
       valueType: 'number',
@@ -387,12 +405,12 @@ const ACTION_DEFINITIONS = {
   },
   'request.json.delete': {
     label: '删除请求 JSON 字段',
-    phase: 'http-request',
+    phase: 'request',
     defaults: {path: 'data.ads'},
   },
   'request.json.replace': {
     label: '替换请求 JSON 字段',
-    phase: 'http-request',
+    phase: 'request',
     defaults: {
       path: 'data.price',
       valueType: 'variable',
@@ -401,7 +419,7 @@ const ACTION_DEFINITIONS = {
   },
   'response.json.add': {
     label: '添加响应 JSON 字段',
-    phase: 'http-response',
+    phase: 'response',
     defaults: {
       path: 'data.rewritten',
       valueType: 'boolean',
@@ -410,12 +428,12 @@ const ACTION_DEFINITIONS = {
   },
   'response.json.delete': {
     label: '删除响应 JSON 字段',
-    phase: 'http-response',
+    phase: 'response',
     defaults: {path: 'data.ads'},
   },
   'response.json.replace': {
     label: '替换响应 JSON 字段',
-    phase: 'http-response',
+    phase: 'response',
     defaults: {
       path: 'data.vip',
       valueType: 'boolean',
@@ -424,7 +442,7 @@ const ACTION_DEFINITIONS = {
   },
   'request.json.jq': {
     label: '使用 jq 修改请求 JSON',
-    phase: 'http-request',
+    phase: 'request',
     defaults: {
       source: 'filter',
       filter: '.data.ads = []',
@@ -433,7 +451,7 @@ const ACTION_DEFINITIONS = {
   },
   'response.json.jq': {
     label: '使用 jq 修改响应 JSON',
-    phase: 'http-response',
+    phase: 'response',
     defaults: {
       source: 'filter',
       filter: '.data.ads = []',
@@ -442,7 +460,7 @@ const ACTION_DEFINITIONS = {
   },
   'request.body.mock': {
     label: 'Mock 请求 Body',
-    phase: 'http-request',
+    phase: 'request',
     defaults: {
       type: 'json',
       source: 'data',
@@ -454,7 +472,7 @@ const ACTION_DEFINITIONS = {
   },
   'response.body.mock': {
     label: 'Mock 响应 Body',
-    phase: 'http-request',
+    phase: 'response',
     defaults: {
       type: 'json',
       source: 'data',
@@ -483,19 +501,19 @@ const BODY_TYPES = [
   'form-data',
 ];
 
-const REJECT_PRESETS = [
-  {value: '404|empty', label: '404 · 空 Body'},
-  {value: '200|empty', label: '200 · 空 Body'},
-  {value: '200|image', label: '200 · 1×1 GIF'},
-  {value: '200|json-object', label: '200 · JSON 对象 {}'},
-  {value: '200|json-array', label: '200 · JSON 数组 []'},
-  {value: '200|video', label: '200 · 空白视频'},
+const REJECT_MODES = [
+  {value: 'empty', label: '空 Body'},
+  {value: 'custom', label: '自定义文本'},
+  {value: 'image', label: '1×1 GIF'},
+  {value: 'json-object', label: 'JSON 对象 {}'},
+  {value: 'json-array', label: 'JSON 数组 []'},
+  {value: 'video', label: '空白视频'},
 ];
 
 const EXAMPLES = {
   request: {
     label: '请求 Header 清理',
-    phase: 'http-request',
+    phase: 'request',
     conditions: {
       id: 'group-example-request',
       kind: 'group',
@@ -507,7 +525,7 @@ const EXAMPLES = {
           field: 'url',
           operator: '~=',
           valueType: 'regex',
-          value: '^https:\\/\\/api[.]example[.]com',
+          value: '^https:\\/\\/api\\.example\\.com',
           flags: '',
           headerName: '',
           variableName: '',
@@ -535,14 +553,14 @@ const EXAMPLES = {
       },
       {
         id: 'action-example-request-2',
-        type: 'request.header.delete',
+        type: 'request.header.del',
         fields: {name: 'Cookie'},
       },
     ],
   },
   response: {
     label: '修改 JSON 响应',
-    phase: 'http-response',
+    phase: 'response',
     conditions: {
       id: 'group-example-response',
       kind: 'group',
@@ -554,7 +572,7 @@ const EXAMPLES = {
           field: 'url',
           operator: '~=',
           valueType: 'regex',
-          value: '^https:\\/\\/api[.]example[.]com\\/profile$',
+          value: '^https:\\/\\/api\\.example\\.com\\/profile$',
           flags: '',
           headerName: '',
           variableName: '',
@@ -601,7 +619,7 @@ const EXAMPLES = {
   },
   mock: {
     label: 'Mock JSON 响应',
-    phase: 'http-request',
+    phase: 'response',
     conditions: {
       id: 'group-example-mock',
       kind: 'group',
@@ -613,7 +631,7 @@ const EXAMPLES = {
           field: 'url',
           operator: '~=',
           valueType: 'regex',
-          value: '^https:\\/\\/api[.]example[.]com\\/mock$',
+          value: '^https:\\/\\/api\\.example\\.com\\/mock$',
           flags: '',
           headerName: '',
           variableName: '',
@@ -650,7 +668,7 @@ function createCondition(id, overrides = {}) {
     field: 'url',
     operator: '~=',
     valueType: 'regex',
-    value: '^https:\\/\\/example[.]com',
+    value: '^https:\\/\\/example\\.com',
     flags: '',
     headerName: '',
     variableName: '',
@@ -799,52 +817,75 @@ function groupText(group, nested = false) {
   if (!content) {
     return '';
   }
-  return nested ? `(${content})` : content;
+  return nested && group.items.length > 1 ? `(${content})` : content;
+}
+
+function actionMethod(action) {
+  const {type, fields} = action;
+  if (type === 'reject') {
+    return {
+      image: 'reject_img',
+      'json-object': 'reject_dict',
+      'json-array': 'reject_array',
+      video: 'reject_video',
+    }[fields.mode] || 'reject';
+  }
+  if (
+    (type.endsWith('.json.jq') || type.endsWith('.body.mock')) &&
+    fields.source === 'file'
+  ) {
+    return `${type}_file`;
+  }
+  return type;
 }
 
 function actionText(action) {
   const {type, fields} = action;
+  const method = actionMethod(action);
 
   if (type === 'url.replace') {
-    return `${type}(pattern=${regexLiteral(fields.pattern, fields.flags)}, replacement=${quoteString(fields.replacement)})`;
+    return `${type}(${quoteString(fields.replacement)})`;
   }
 
   if (type === 'redirect') {
-    return `${type}(status=${fields.status}, location=${quoteString(fields.location)})`;
+    return `${type}(${fields.status}, ${quoteString(fields.location)})`;
   }
 
   if (type === 'reject') {
-    const [status, body] = fields.preset.split('|');
-    return `${type}(status=${status}, body=${quoteString(body)})`;
+    const params = [fields.status || '200'];
+    if (fields.mode === 'custom' && fields.body) {
+      params.push(quoteString(fields.body));
+    }
+    return `${method}(${params.join(', ')})`;
   }
 
   if (type.endsWith('.header.add') || type.endsWith('.header.set')) {
-    return `${type}(name=${quoteString(fields.name)}, value=${quoteString(fields.value)})`;
+    return `${type}(${quoteString(fields.name)}, ${quoteString(fields.value)})`;
   }
 
-  if (type.endsWith('.header.delete')) {
-    return `${type}(name=${quoteString(fields.name)})`;
+  if (type.endsWith('.header.del')) {
+    return `${type}(${quoteString(fields.name)})`;
   }
 
   if (type.endsWith('.header.replace')) {
-    return `${type}(name=${quoteString(fields.name)}, pattern=${regexLiteral(fields.pattern, fields.flags)}, replacement=${quoteString(fields.replacement)})`;
+    return `${type}(${quoteString(fields.name)}, ${regexLiteral(fields.pattern, fields.flags)}, ${quoteString(fields.replacement)})`;
   }
 
   if (type.endsWith('.body.replace')) {
-    return `${type}(pattern=${regexLiteral(fields.pattern, fields.flags)}, replacement=${quoteString(fields.replacement)})`;
+    return `${type}(${regexLiteral(fields.pattern, fields.flags)}, ${quoteString(fields.replacement)})`;
   }
 
   if (type.endsWith('.json.delete')) {
-    return `${type}(path=${quoteString(fields.path)})`;
+    return `${type}(${quoteString(fields.path)})`;
   }
 
   if (type.endsWith('.json.add') || type.endsWith('.json.replace')) {
-    return `${type}(path=${quoteString(fields.path)}, value=${typedValue(fields.valueType, fields.value)})`;
+    return `${type}(${quoteString(fields.path)}, ${typedValue(fields.valueType, fields.value)})`;
   }
 
   if (type.endsWith('.json.jq')) {
     const key = fields.source === 'file' ? 'file' : 'filter';
-    return `${type}(${key}=${quoteString(fields[key])})`;
+    return `${method}(${quoteString(fields[key])})`;
   }
 
   if (type.endsWith('.body.mock')) {
@@ -853,17 +894,14 @@ function actionText(action) {
       sourceKey === 'data' && fields.raw
         ? rawString(fields.data)
         : quoteString(fields[sourceKey]);
-    const params = [
-      `type=${quoteString(fields.type)}`,
-      `${sourceKey}=${sourceValue}`,
-    ];
-    if (fields.base64) {
-      params.push('base64=true');
-    }
+    const params = [quoteString(fields.type), sourceValue];
     if (type === 'response.body.mock') {
-      params.push(`status=${fields.status || '200'}`);
+      params.push(fields.status || '200');
     }
-    return `${type}(${params.join(', ')})`;
+    if (fields.base64) {
+      params.push('true');
+    }
+    return `${method}(${params.join(', ')})`;
   }
 
   return `${type}()`;
@@ -963,8 +1001,10 @@ function analyzeConditions(group, mandatory = true, result) {
     pluginParameters: [],
     optionalCaptures: [],
     mandatoryUrlRegexCount: 0,
+    responseReferences: [],
   };
-  const childrenMandatory = mandatory && group.logic === '&&';
+  const childrenMandatory =
+    mandatory && (group.logic === '&&' || group.items.length === 1);
 
   group.items.forEach((item) => {
     if (item.kind === 'group') {
@@ -974,6 +1014,10 @@ function analyzeConditions(group, mandatory = true, result) {
 
     if (item.field === 'plugin' && item.variableName.trim()) {
       analysis.pluginParameters.push(item.variableName.trim());
+    }
+
+    if (item.field.startsWith('response.')) {
+      analysis.responseReferences.push(item.field);
     }
 
     if (item.captureName.trim()) {
@@ -1000,14 +1044,29 @@ function validateAction(action) {
   const {type, fields} = action;
   const issues = [];
 
-  if (type === 'url.replace' && !fields.pattern) {
-    issues.push('URL 替换正则不能为空');
-  }
   if (type === 'url.replace' && !fields.replacement) {
     issues.push('URL 替换内容不能为空');
   }
+  if (
+    (type === 'url.replace' || type === 'redirect') &&
+    /\$\d+/.test(
+      type === 'url.replace' ? fields.replacement : fields.location,
+    )
+  ) {
+    issues.push(
+      'URL 修改内容不能使用 $n，请在条件中使用 as 并引用 ${名称.n}',
+    );
+  }
   if (type === 'redirect' && !fields.location) {
     issues.push('重定向地址不能为空');
+  }
+  if (
+    type === 'reject' &&
+    (!Number.isInteger(Number(fields.status)) ||
+      Number(fields.status) < 100 ||
+      Number(fields.status) > 599)
+  ) {
+    issues.push('Reject 状态码必须是 100 到 599 的整数');
   }
 
   if (type.includes('.header.') && !fields.name?.trim()) {
@@ -1052,10 +1111,11 @@ function validateAction(action) {
     }
     if (
       type === 'response.body.mock' &&
-      (String(fields.status).trim() === '' ||
-        !Number.isInteger(Number(fields.status)))
+      (!Number.isInteger(Number(fields.status)) ||
+        Number(fields.status) < 100 ||
+        Number(fields.status) > 599)
     ) {
-      issues.push('Mock 响应状态码格式不正确');
+      issues.push('Response Mock 状态码必须是 100 到 599 的整数');
     }
   }
 
@@ -1208,7 +1268,7 @@ function ConditionValueEditor({condition, update}) {
               value={condition.value}
               placeholder={
                 condition.valueType === 'regex'
-                  ? '^https:\\/\\/example[.]com'
+                  ? '^https:\\/\\/example\\.com'
                   : 'urlPattern'
               }
               onChange={(event) => update({value: event.target.value})}
@@ -1341,7 +1401,7 @@ function ConditionRow({
       field,
       operator: '~=',
       valueType: 'regex',
-      value: '^https:\\/\\/example[.]com',
+      value: '^https:\\/\\/example\\.com',
       captureName: '',
     });
   };
@@ -1671,16 +1731,13 @@ function ActionFields({action, onChange}) {
 
   if (type === 'url.replace') {
     return (
-      <>
-        <RegexEditor fields={fields} update={update} label="URL 替换正则" />
-        <TextField
-          label="替换内容"
-          value={fields.replacement}
-          onChange={(replacement) => update({replacement})}
-          placeholder="https://example.com"
-          wide
-        />
-      </>
+      <TextField
+        label="URL 替换内容（使用 IF 正则）"
+        value={fields.replacement}
+        onChange={(replacement) => update({replacement})}
+        placeholder="https://example.com"
+        wide
+      />
     );
   }
 
@@ -1708,17 +1765,37 @@ function ActionFields({action, onChange}) {
 
   if (type === 'reject') {
     return (
-      <FieldShell label="响应类型" wide>
-        <select
-          value={fields.preset}
-          onChange={(event) => update({preset: event.target.value})}>
-          {REJECT_PRESETS.map((preset) => (
-            <option key={preset.value} value={preset.value}>
-              {t(preset.label)}
-            </option>
-          ))}
-        </select>
-      </FieldShell>
+      <>
+        <FieldShell label="状态码">
+          <input
+            type="number"
+            min="100"
+            max="599"
+            value={fields.status}
+            onChange={(event) => update({status: event.target.value})}
+          />
+        </FieldShell>
+        <FieldShell label="响应类型">
+          <select
+            value={fields.mode}
+            onChange={(event) => update({mode: event.target.value})}>
+            {REJECT_MODES.map((mode) => (
+              <option key={mode.value} value={mode.value}>
+                {t(mode.label)}
+              </option>
+            ))}
+          </select>
+        </FieldShell>
+        {fields.mode === 'custom' && (
+          <TextField
+            label="响应文本"
+            value={fields.body}
+            onChange={(body) => update({body})}
+            placeholder="允许留空"
+            wide
+          />
+        )}
+      </>
     );
   }
 
@@ -1742,7 +1819,7 @@ function ActionFields({action, onChange}) {
     );
   }
 
-  if (type.endsWith('.header.delete')) {
+  if (type.endsWith('.header.del')) {
     return (
       <TextField
         label="Header 名称"
@@ -1768,7 +1845,7 @@ function ActionFields({action, onChange}) {
           label="替换内容"
           value={fields.replacement}
           onChange={(replacement) => update({replacement})}
-          placeholder="允许留空"
+          placeholder="支持 $n 与 ${...}"
           wide
         />
       </>
@@ -1783,7 +1860,7 @@ function ActionFields({action, onChange}) {
           label="替换内容"
           value={fields.replacement}
           onChange={(replacement) => update({replacement})}
-          placeholder="支持 ${...}"
+          placeholder="支持 $n 与 ${...}"
           wide
         />
       </>
@@ -1835,7 +1912,9 @@ function ActionFields({action, onChange}) {
           onChange={(value) => update({[key]: value})}
           placeholder={
             fields.source === 'file'
-              ? 'response-filter.jq'
+              ? type.startsWith('request.')
+                ? 'request-filter.jq'
+                : 'response-filter.jq'
               : '.data.ads = []'
           }
           wide
@@ -1897,12 +1976,22 @@ function ActionFields({action, onChange}) {
           {t('数据为 Base64')}
         </label>
         {type === 'response.body.mock' && (
-          <TextField
-            label="响应状态码"
-            value={fields.status}
-            onChange={(status) => update({status})}
-            placeholder="200"
-          />
+          <>
+            <FieldShell label="响应状态码">
+              <input
+                type="number"
+                min="100"
+                max="599"
+                value={fields.status}
+                onChange={(event) => update({status: event.target.value})}
+              />
+            </FieldShell>
+            <p className={styles.actionNotice}>
+              {t(
+                'Response Mock 会在请求发出前生成响应，只能与响应 Header Action 组合。',
+              )}
+            </p>
+          </>
         )}
       </>
     );
@@ -1938,7 +2027,7 @@ function ActionCard({
               }
             />
           </FieldShell>
-          <code>{action.type}</code>
+          <code>{actionMethod(action)}</code>
         </div>
         <div className={styles.actionFields}>
           <ActionFields
@@ -1969,7 +2058,7 @@ export default function RewriteBuilder() {
     return `${prefix}-${idCounter.current}`;
   };
 
-  const [phase, setPhase] = useState('http-request');
+  const [phase, setPhase] = useState('request');
   const [conditions, setConditions] = useState(() =>
     clone(EXAMPLES.request.conditions),
   );
@@ -2020,12 +2109,51 @@ export default function RewriteBuilder() {
       issues.push('至少需要一个 Action');
     }
     actions.forEach((action) => issues.push(...validateAction(action)));
-    if (actions.some((action) => action.type === 'redirect')) {
+    if (
+      actions.some(
+        (action) =>
+          action.type === 'url.replace' || action.type === 'redirect',
+      )
+    ) {
       if (analysis.mandatoryUrlRegexCount === 0) {
-        issues.push('redirect 需要一个必选的 URL 正则条件');
+        issues.push('URL 修改需要一个必选的 URL 正则条件');
       } else if (analysis.mandatoryUrlRegexCount > 1) {
-        issues.push('redirect 只能对应一个必选的 URL 正则条件');
+        issues.push('URL 修改只能对应一个必选的 URL 正则条件');
       }
+    }
+
+    const responseMocks = actions.filter(
+      (action) => action.type === 'response.body.mock',
+    );
+    if (responseMocks.length > 1) {
+      issues.push('一条 Rewrite 只能包含一个 Response Mock');
+    }
+    if (
+      responseMocks.length &&
+      actions.some(
+        (action) =>
+          action.type !== 'response.body.mock' &&
+          !action.type.startsWith('response.header.'),
+      )
+    ) {
+      issues.push('Response Mock 只能与响应 Header Action 组合');
+    }
+    if (responseMocks.length && analysis.responseReferences.length) {
+      issues.push('Response Mock 条件不能引用响应状态码或响应 Header');
+    }
+    if (
+      responseMocks.some((action) => {
+        const {fields} = action;
+        const sourceValue =
+          fields.source === 'file'
+            ? fields.file
+            : fields.raw
+              ? ''
+              : fields.data;
+        return String(sourceValue).includes('${response.');
+      })
+    ) {
+      issues.push('Response Mock 参数不能引用尚未生成的响应变量');
     }
     return [...new Set(issues)];
   }, [conditions, actions]);
@@ -2069,7 +2197,7 @@ export default function RewriteBuilder() {
     }
     setPhase(nextPhase);
     setCopyState('idle');
-    if (nextPhase === 'http-request') {
+    if (nextPhase === 'request') {
       setConditions((current) => normalizeRequestTree(current));
       setActions((current) => {
         const compatible = current.filter(
@@ -2088,7 +2216,7 @@ export default function RewriteBuilder() {
 
   const addAction = () => {
     const type =
-      phase === 'http-request'
+      phase === 'request'
         ? 'request.header.set'
         : 'response.header.set';
     setActions((current) => [
@@ -2158,6 +2286,7 @@ export default function RewriteBuilder() {
             <p>{t('像搭积木一样组合匹配条件与 Action，实时生成可复制的新 Rewrite 语法。')}</p>
             <div className={styles.heroLinks}>
               <Link to="/docs/Rewrite/rewrite_v2">{t('查看语法文档 →')}</Link>
+              <Link to="/rewrite-converter">{t('转换旧版配置 →')}</Link>
               <span>{t('仅在浏览器本地生成，不会上传配置')}</span>
             </div>
           </div>
