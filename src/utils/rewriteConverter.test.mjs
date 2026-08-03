@@ -8,9 +8,12 @@ urlMatch = input,"reserved"
 [Rewrite]
 ^https:\\/\\/example\\.com\\/(\\d+)$ header https://new.example.com/$1
 ^https:\\/\\/example\\.com header-add X-A 1 X-B 2
+^https:\\/\\/example\\.com header-del Cookie Referer
 ^https:\\/\\/example\\.com header-replace-regex User-Agent (iPhone) $1
 ^https:\\/\\/example\\.com request-body-replace-regex price=(\\d+) amount=$1
+^https:\\/\\/example\\.com response-body-replace-regex false true disabled enabled
 ^https:\\/\\/example\\.com request-body-json-add data.item {"name":"Loon"} data.enabled true
+^https:\\/\\/example\\.com response-body-json-replace data.a 1 data.b true
 ^https:\\/\\/example\\.com request-body-json-jq 'del(.data.ads)'
 ^https:\\/\\/example\\.com mock-request-body data-type=json data="{\\"ok\\":true}"
 ^https:\\/\\/example\\.com mock-response-body data-type=png data-path=response.raw mock-data-is-base64=true status-code=201
@@ -18,7 +21,7 @@ urlMatch = input,"reserved"
 
 const converted = convertLegacyRewrite(source);
 
-assert.equal(converted.stats.converted, 9);
+assert.equal(converted.stats.converted, 12);
 assert.equal(converted.stats.failed, 0);
 assert.deepEqual(converted.issues, []);
 assert.match(converted.output, /as urlMatch2/);
@@ -28,7 +31,11 @@ assert.match(
 );
 assert.match(
   converted.output,
-  /request\.header\.add\("X-A", "1"\) \| request\.header\.add\("X-B", "2"\)/,
+  /request\.header\.add\(\["X-A", "X-B"\], \["1", "2"\]\)/,
+);
+assert.match(
+  converted.output,
+  /request\.header\.del\(\["Cookie", "Referer"\]\)/,
 );
 assert.match(
   converted.output,
@@ -37,7 +44,15 @@ assert.match(
 assert.match(converted.output, /"amount=\$1"/);
 assert.match(
   converted.output,
-  /request\.json\.add\("data\.item", `\{"name":"Loon"\}`\)/,
+  /response\.body\.replace\(\[\/false\/, \/disabled\/\], \["true", "enabled"\]\)/,
+);
+assert.match(
+  converted.output,
+  /request\.json\.add\(\["data\.item", "data\.enabled"\], \[`\{"name":"Loon"\}`, true\]\)/,
+);
+assert.match(
+  converted.output,
+  /response\.json\.replace\(\["data\.a", "data\.b"\], \[1, true\]\)/,
 );
 assert.match(converted.output, /request\.json\.jq\("del\(\.data\.ads\)"\)/);
 assert.match(

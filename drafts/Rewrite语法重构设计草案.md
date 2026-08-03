@@ -1,7 +1,5 @@
 # Rewrite 语法重构设计草案
 
-> 本文为内部设计草案，不作为用户文档发布。
-
 ## 1. 文档状态
 
 - 状态：当前 LNRewrite 语法实现基线
@@ -630,6 +628,82 @@ response.body.mock_file(String, String[, Number[, Boolean]])
 `RegexReplacement` 在配置中仍然使用字符串形式，但其中的 `$0` 至 `$n`
 会引用同一个 Action 的正则匹配结果。
 
+### 批量数组参数
+
+Header 修改、Body 正则替换和 JSON 修改 Action 支持使用数组一次声明多组操作。
+数组参数会保留在配置和可视化编辑器中；运行时保存为单条批量指令，执行阶段按照
+数组下标逐项处理，并严格保持原顺序。例如：
+
+```ini
+request if ${url} ~= /api/ then request.json.replace(["key1", "key2"], ["value1", "value2"])
+```
+
+等价于：
+
+```ini
+request if ${url} ~= /api/ then request.json.replace("key1", "value1") | request.json.replace("key2", "value2")
+```
+
+这里的“等价”指执行结果和错误隔离语义一致。实现不会持久化展开后的多条 Action；
+同一个 JSON 批量 Action 会共享一次外层 Handler 回调和同一棵可变 JSON 容器。
+旧语法一行中连续声明的同类型操作也会在运行时自动合并，因此无需为了获得执行
+优化而修改旧插件的保存格式。
+
+支持数组参数的 Action：
+
+```text
+request.header.add
+request.header.set
+request.header.del
+request.header.replace
+response.header.add
+response.header.set
+response.header.del
+response.header.replace
+request.body.replace
+response.body.replace
+request.json.add
+request.json.delete
+request.json.replace
+response.json.add
+response.json.delete
+response.json.replace
+```
+
+使用规则：
+
+1. 原有单值写法继续有效。
+2. 同一个 Action 使用批量语法时，所有参数都必须写成数组。
+3. 同一个 Action 的所有数组长度必须一致，并按相同下标配对。
+4. 数组不能为空，不支持嵌套数组。
+5. 每个数组元素仍需满足对应参数的 String、Regex、RegexReplacement 或 Any 类型。
+6. JSON Path 数组中的每个元素都会分别进行路径合法性校验。
+
+示例：
+
+```ini
+request if ${url} ~= /api/ then request.header.del(["Cookie", "Referer"])
+request if ${url} ~= /api/ then request.header.set(["X-A", "X-B"], ["1", "2"])
+request if ${url} ~= /api/ then request.header.replace(["X-A", "X-B"], [/old-a/, /old-b/i], ["new-a", "new-b"])
+response if ${url} ~= /api/ then response.body.replace([/false/, /disabled/], ["true", "enabled"])
+response if ${url} ~= /api/ then response.json.add(["data.a", "data.b"], [1, true])
+response if ${url} ~= /api/ then response.json.delete(["data.ad", "data.tracking"])
+```
+
+以下写法非法：
+
+```ini
+# 单值和数组混用
+request.json.replace(["key1", "key2"], "value")
+
+# 数组长度不同
+request.header.set(["X-A", "X-B"], ["1"])
+
+# 空数组或嵌套数组
+request.header.del([])
+request.json.replace(["key"], [[1, 2]])
+```
+
 ### 14.1 URL 修改
 
 #### `url.replace`
@@ -1163,6 +1237,7 @@ response.json.replace(path="data.price", value=9.99)
 布尔值       true
 标识符       response.json.replace
 操作符       ==、~=、&&、||
+数组边界     [、]
 ```
 
 只有位于最外层时，以下字符才具有语法含义：
@@ -1176,6 +1251,8 @@ then
 ,
 (
 )
+[
+]
 ```
 
 这些字符出现在以下区域时只是普通内容：

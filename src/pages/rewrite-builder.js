@@ -104,6 +104,11 @@ const EN_TEXT = {
   'Body 内容': 'Body content',
   '使用反引号原始字符串': 'Use a backtick-delimited raw string',
   '数据为 Base64': 'Data is Base64 encoded',
+  '参数组': 'Parameter group',
+  '添加一组参数': 'Add parameter group',
+  '删除参数组': 'Delete parameter group',
+  '支持数组参数；添加多组后会自动生成批量语法。':
+    'Supports array arguments. Add multiple groups to generate batch syntax automatically.',
   '删除 Action': 'Delete action',
   '至少需要一个 Action': 'At least one action is required',
   'URL 修改需要一个必选的 URL 正则条件':
@@ -196,6 +201,10 @@ function translateBuilderText(text, isEnglish) {
   match = text.match(/^捕获名称不能与插件参数重名：(.+)$/);
   if (match) {
     return `Capture names cannot match plugin arguments: ${match[1].replaceAll('、', ', ')}`;
+  }
+  match = text.match(/^参数组 (\d+)：(.+)$/);
+  if (match) {
+    return `Parameter group ${match[1]}: ${translateBuilderText(match[2], true)}`;
   }
   return text;
 }
@@ -484,6 +493,25 @@ const ACTION_DEFINITIONS = {
     },
   },
 };
+
+const BATCH_ACTION_TYPES = new Set([
+  'request.header.add',
+  'request.header.set',
+  'request.header.del',
+  'request.header.replace',
+  'response.header.add',
+  'response.header.set',
+  'response.header.del',
+  'response.header.replace',
+  'request.body.replace',
+  'response.body.replace',
+  'request.json.add',
+  'request.json.delete',
+  'request.json.replace',
+  'response.json.add',
+  'response.json.delete',
+  'response.json.replace',
+]);
 
 const BODY_TYPES = [
   'json',
@@ -839,8 +867,43 @@ function actionMethod(action) {
   return type;
 }
 
+function actionParameterGroups(action) {
+  if (!BATCH_ACTION_TYPES.has(action.type)) {
+    return [action.fields];
+  }
+  return Array.isArray(action.fields.groups) && action.fields.groups.length
+    ? action.fields.groups
+    : [action.fields];
+}
+
+function batchActionText(type, groups) {
+  const array = (values) => `[${values.join(', ')}]`;
+
+  if (type.endsWith('.header.add') || type.endsWith('.header.set')) {
+    return `${type}(${array(groups.map((fields) => quoteString(fields.name)))}, ${array(groups.map((fields) => quoteString(fields.value)))})`;
+  }
+  if (type.endsWith('.header.del')) {
+    return `${type}(${array(groups.map((fields) => quoteString(fields.name)))})`;
+  }
+  if (type.endsWith('.header.replace')) {
+    return `${type}(${array(groups.map((fields) => quoteString(fields.name)))}, ${array(groups.map((fields) => regexLiteral(fields.pattern, fields.flags)))}, ${array(groups.map((fields) => quoteString(fields.replacement)))})`;
+  }
+  if (type.endsWith('.body.replace')) {
+    return `${type}(${array(groups.map((fields) => regexLiteral(fields.pattern, fields.flags)))}, ${array(groups.map((fields) => quoteString(fields.replacement)))})`;
+  }
+  if (type.endsWith('.json.delete')) {
+    return `${type}(${array(groups.map((fields) => quoteString(fields.path)))})`;
+  }
+  if (type.endsWith('.json.add') || type.endsWith('.json.replace')) {
+    return `${type}(${array(groups.map((fields) => quoteString(fields.path)))}, ${array(groups.map((fields) => typedValue(fields.valueType, fields.value)))})`;
+  }
+  return `${type}()`;
+}
+
 function actionText(action) {
-  const {type, fields} = action;
+  const {type} = action;
+  const groups = actionParameterGroups(action);
+  const fields = groups[0];
   const method = actionMethod(action);
 
   if (type === 'url.replace') {
@@ -857,6 +920,10 @@ function actionText(action) {
       params.push(quoteString(fields.body));
     }
     return `${method}(${params.join(', ')})`;
+  }
+
+  if (groups.length > 1) {
+    return batchActionText(type, groups);
   }
 
   if (type.endsWith('.header.add') || type.endsWith('.header.set')) {
@@ -1040,7 +1107,7 @@ function analyzeConditions(group, mandatory = true, result) {
   return analysis;
 }
 
-function validateAction(action) {
+function validateSingleAction(action) {
   const {type, fields} = action;
   const issues = [];
 
@@ -1120,6 +1187,15 @@ function validateAction(action) {
   }
 
   return issues;
+}
+
+function validateAction(action) {
+  const groups = actionParameterGroups(action);
+  return groups.flatMap((fields, index) =>
+    validateSingleAction({...action, fields}).map((issue) =>
+      groups.length > 1 ? `参数组 ${index + 1}：${issue}` : issue,
+    ),
+  );
 }
 
 function collectCounts(group) {
@@ -1724,7 +1800,7 @@ function AnyValueEditor({fields, update}) {
   );
 }
 
-function ActionFields({action, onChange}) {
+function ActionParameterFields({action, onChange}) {
   const t = useBuilderText();
   const {type, fields} = action;
   const update = (patch) => onChange({...fields, ...patch});
@@ -1998,6 +2074,68 @@ function ActionFields({action, onChange}) {
   }
 
   return null;
+}
+
+function ActionFields({action, onChange}) {
+  const t = useBuilderText();
+  if (!BATCH_ACTION_TYPES.has(action.type)) {
+    return <ActionParameterFields action={action} onChange={onChange} />;
+  }
+
+  const groups = actionParameterGroups(action);
+  const updateGroup = (index, fields) => {
+    const nextGroups = groups.map((group, groupIndex) =>
+      groupIndex === index ? fields : group,
+    );
+    onChange({groups: nextGroups});
+  };
+  const removeGroup = (index) => {
+    onChange({groups: groups.filter((_, groupIndex) => groupIndex !== index)});
+  };
+  const addGroup = () => {
+    onChange({
+      groups: [...groups, clone(ACTION_DEFINITIONS[action.type].defaults)],
+    });
+  };
+
+  return (
+    <div className={styles.parameterGroups}>
+      <p className={styles.batchHint}>
+        {t('支持数组参数；添加多组后会自动生成批量语法。')}
+      </p>
+      {groups.map((fields, index) => (
+        <div className={styles.parameterGroup} key={index}>
+          <div className={styles.parameterGroupHeader}>
+            <strong>
+              {t('参数组')} {index + 1}
+            </strong>
+            {groups.length > 1 && (
+              <button
+                type="button"
+                onClick={() => removeGroup(index)}
+                aria-label={`${t('删除参数组')} ${index + 1}`}>
+                <Icon name="trash" />
+                <span>{t('删除参数组')}</span>
+              </button>
+            )}
+          </div>
+          <div className={styles.parameterGroupFields}>
+            <ActionParameterFields
+              action={{...action, fields}}
+              onChange={(nextFields) => updateGroup(index, nextFields)}
+            />
+          </div>
+        </div>
+      ))}
+      <button
+        type="button"
+        className={styles.addParameterButton}
+        onClick={addGroup}>
+        <Icon name="plus" />
+        {t('添加一组参数')}
+      </button>
+    </div>
+  );
 }
 
 function ActionCard({

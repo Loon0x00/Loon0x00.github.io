@@ -387,6 +387,42 @@ response.body.mock_file(String, String[, Number[, Boolean]])
 
 `RegexReplacement` 在配置中仍使用字符串形式，其中的 `$0` 至 `$n` 引用同一个 Action 的正则匹配结果。
 
+### 批量数组参数
+
+Header 修改、Body 正则替换和 JSON 修改支持在一个 Action 中配置多组参数：
+
+```ini
+request if ${url} ~= /api/ then request.header.set(["X-A", "X-B"], ["1", "2"])
+response if ${url} ~= /api/ then response.body.replace([/false/, /disabled/], ["true", "enabled"])
+response if ${url} ~= /api/ then response.json.add(["data.a", "data.b"], [1, true])
+```
+
+支持批量参数的 Action：
+
+- `request.header.add/set/del/replace`
+- `response.header.add/set/del/replace`
+- `request.body.replace`、`response.body.replace`
+- `request.json.add/delete/replace`
+- `response.json.add/delete/replace`
+
+单值写法继续有效。使用数组时需遵守以下规则：
+
+1. 同一个 Action 的所有参数都必须使用数组，不能混用单值和数组。
+2. 各参数数组长度必须一致，参数按照相同下标配对并依次执行。
+3. 数组不能为空，也不能嵌套数组。
+4. 每个元素仍需符合该位置要求的 String、Regex、RegexReplacement 或 Any 类型。
+5. 每个 JSON Key Path 都会单独校验。
+
+例如：
+
+```ini
+request.header.del(["Cookie", "Referer"])
+request.header.replace(["X-A", "X-B"], [/old-a/, /old-b/i], ["new-a", "new-b"])
+response.json.delete(["data.ads", "data.tracking"])
+```
+
+批量写法在执行效果上等价于按相同顺序填写多个同类 Action，但配置会保留为一条批量指令。
+
 ### URL 修改
 
 #### `url.replace`
@@ -673,6 +709,8 @@ request if ${url} ~= /^https:\/\/example\.com/ then request.header.set("X-Order"
 
 旧 `header`、`302`、`307` 替换内容中的 `$n` 来自行首 URL 正则。转换为新语法时，Loon 会为该正则生成捕获名称，并把 `$n` 转换为 `${名称.n}`。Header/Body 正则替换 Action 自带的 `$n` 仍保持为 Action 局部捕获。
 
+旧语法一行中连续填写的多组同类操作会在转换时合并为批量数组参数；只有一组参数时仍输出单值写法。
+
 开发阶段曾使用过但未正式发布的 `http-request`、`http-response` 和命名参数写法不属于兼容范围。
 
 ## 完整示例
@@ -698,6 +736,7 @@ Loon 会在加载配置时检查：
 - 捕获是否位于所有成功路径都会经过的条件中。
 - 变量和 Action 是否可以用于当前阶段。
 - Action 参数数量、顺序和类型是否正确。
+- 批量数组是否非空、长度一致且没有与单值参数混用。
 - URL 替换和重定向是否具有唯一的必选 URL 正则。
 - 正则是否能够成功编译。
 - Mock 响应是否符合 Action 组合和变量使用限制。
@@ -713,7 +752,7 @@ Rewrite 第 25 行：request 阶段不能引用 ${response.status}
 ## 开发者注意事项
 
 - Parser 应识别字符串、原始字符串、正则和变量边界，不能直接按空格或逗号拆分整行。
-- `if`、`then`、`&&`、`||`、`|`、`,` 和括号只有位于最外层时才具有语法含义。
+- `if`、`then`、`&&`、`||`、`|`、`,`、括号和数组边界 `[]` 只有位于最外层时才具有语法含义。
 - 插件参数必须作为语法树中的有类型数据传入，不能先替换文本再重新解析。
 - 变量只展开一次；参数值中的 `${...}` 不会触发二次展开。
 - 已发布 Action 的位置参数顺序保持稳定，新增可选参数只能追加到末尾。

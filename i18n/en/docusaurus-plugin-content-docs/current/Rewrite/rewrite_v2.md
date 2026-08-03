@@ -387,6 +387,42 @@ response.body.mock_file(String, String[, Number[, Boolean]])
 
 A `RegexReplacement` is still written as a string. `$0` through `$n` refer to matches from the regex owned by the same action.
 
+### Batch array arguments
+
+Header changes, body regex replacement, and JSON changes can contain multiple parameter groups in one action:
+
+```ini
+request if ${url} ~= /api/ then request.header.set(["X-A", "X-B"], ["1", "2"])
+response if ${url} ~= /api/ then response.body.replace([/false/, /disabled/], ["true", "enabled"])
+response if ${url} ~= /api/ then response.json.add(["data.a", "data.b"], [1, true])
+```
+
+Actions that support batch arguments:
+
+- `request.header.add/set/del/replace`
+- `response.header.add/set/del/replace`
+- `request.body.replace` and `response.body.replace`
+- `request.json.add/delete/replace`
+- `response.json.add/delete/replace`
+
+The existing scalar form remains valid. Array arguments follow these rules:
+
+1. Every argument of the same action must be an array; scalar and array arguments cannot be mixed.
+2. All argument arrays must have the same length. Elements with the same index are paired and run in order.
+3. Arrays cannot be empty or nested.
+4. Every element must still match the String, Regex, RegexReplacement, or Any type required at that position.
+5. Every JSON key path is validated separately.
+
+For example:
+
+```ini
+request.header.del(["Cookie", "Referer"])
+request.header.replace(["X-A", "X-B"], [/old-a/, /old-b/i], ["new-a", "new-b"])
+response.json.delete(["data.ads", "data.tracking"])
+```
+
+Batch syntax has the same execution result as listing the corresponding actions in the same order, but it remains stored as one batch instruction.
+
 ### URL changes
 
 #### `url.replace`
@@ -673,6 +709,8 @@ Common mappings:
 
 In legacy `header`, `302`, and `307` entries, `$n` in the replacement refers to the leading URL regex. During conversion, Loon assigns a capture name and converts `$n` to `${name.n}`. `$n` belonging to the regex in a Header/Body Replace action remains action-local.
 
+Multiple operations of the same type on one legacy line are merged into batch array arguments during conversion. A single parameter group remains in scalar form.
+
 The development-only `http-request`, `http-response`, and named-argument forms were never released and are not compatibility syntax.
 
 ## Complete example
@@ -698,6 +736,7 @@ When loading configuration, Loon validates:
 - A referenced capture exists on every successful expression path.
 - Variables and actions are available in the selected phase.
 - Action argument counts, order, and types are correct.
+- Batch arrays are non-empty, have matching lengths, and are not mixed with scalar arguments.
 - URL replacement and redirect actions have one mandatory URL regex.
 - Regular expressions compile successfully.
 - Response mock actions follow their action-combination and variable restrictions.
@@ -713,7 +752,7 @@ Rewrite line 25: the request phase cannot reference ${response.status}
 ## Developer notes
 
 - The parser must recognize string, raw-string, regex, and variable boundaries. It must not split a line directly on spaces or commas.
-- `if`, `then`, `&&`, `||`, `|`, `,`, and parentheses have syntax meaning only at the outermost level.
+- `if`, `then`, `&&`, `||`, `|`, `,`, parentheses, and array boundaries `[]` have syntax meaning only at the outermost level.
 - Plugin arguments must enter the syntax tree as typed data. Do not substitute their text and parse the line again.
 - Variables expand once. `${...}` inside an argument value does not trigger a second expansion.
 - Positional argument order for a released action remains stable. New optional arguments can be appended only at the end.

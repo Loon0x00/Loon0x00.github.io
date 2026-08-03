@@ -231,25 +231,37 @@ function requireMultiple(args, size, action) {
   return '';
 }
 
+function batchAction(method, columns) {
+  const params =
+    columns[0].length === 1
+      ? columns.map((column) => column[0])
+      : columns.map((column) => `[${column.join(', ')}]`);
+  return [`${method}(${params.join(', ')})`];
+}
+
 function pairActions(args, method, valueFormatter = (token) =>
   quoteString(decodeLegacyText(token.value))) {
-  const actions = [];
+  const names = [];
+  const values = [];
   for (let index = 0; index < args.length; index += 2) {
-    actions.push(
-      `${method}(${quoteString(decodeLegacyText(args[index].value))}, ${valueFormatter(args[index + 1])})`,
-    );
+    names.push(quoteString(decodeLegacyText(args[index].value)));
+    values.push(valueFormatter(args[index + 1]));
   }
-  return actions;
+  return batchAction(method, [names, values]);
 }
 
 function tripleActions(args, method) {
-  const actions = [];
+  const names = [];
+  const patterns = [];
+  const replacements = [];
   for (let index = 0; index < args.length; index += 3) {
-    actions.push(
-      `${method}(${quoteString(decodeLegacyText(args[index].value))}, ${regexLiteral(args[index + 1].value)}, ${quoteString(decodeLegacyText(args[index + 2].value))})`,
+    names.push(quoteString(decodeLegacyText(args[index].value)));
+    patterns.push(regexLiteral(args[index + 1].value));
+    replacements.push(
+      quoteString(decodeLegacyText(args[index + 2].value)),
     );
   }
-  return actions;
+  return batchAction(method, [names, patterns, replacements]);
 }
 
 function parseMockArguments(args) {
@@ -357,10 +369,11 @@ function convertLegacyAction(action, args) {
     const [phase, method] = headerDeleteMethods[action];
     return {
       phase,
-      actions: args.map(
-        (token) =>
-          `${method}(${quoteString(decodeLegacyText(token.value))})`,
-      ),
+      actions: batchAction(method, [
+        args.map((token) =>
+          quoteString(decodeLegacyText(token.value)),
+        ),
+      ]),
     };
   }
 
@@ -393,13 +406,15 @@ function convertLegacyAction(action, args) {
       return {error};
     }
     const [phase, method] = bodyRegexMethods[action];
-    const actions = [];
+    const patterns = [];
+    const replacements = [];
     for (let index = 0; index < args.length; index += 2) {
-      actions.push(
-        `${method}(${regexLiteral(args[index].value)}, ${quoteString(decodeLegacyText(args[index + 1].value))})`,
+      patterns.push(regexLiteral(args[index].value));
+      replacements.push(
+        quoteString(decodeLegacyText(args[index + 1].value)),
       );
     }
-    return {phase, actions};
+    return {phase, actions: batchAction(method, [patterns, replacements])};
   }
 
   const jsonPairMethods = {
@@ -432,10 +447,11 @@ function convertLegacyAction(action, args) {
     const [phase, method] = jsonDeleteMethods[action];
     return {
       phase,
-      actions: args.map(
-        (token) =>
-          `${method}(${quoteString(decodeLegacyText(token.value))})`,
-      ),
+      actions: batchAction(method, [
+        args.map((token) =>
+          quoteString(decodeLegacyText(token.value)),
+        ),
+      ]),
     };
   }
 

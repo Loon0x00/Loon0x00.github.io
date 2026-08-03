@@ -493,6 +493,8 @@
 .groupActions svg,
 .removeGroupButton svg,
 .addActionButton svg,
+.addParameterButton svg,
+.parameterGroupHeader svg,
 .copyButton svg {
   width: 1rem;
   fill: none;
@@ -677,6 +679,85 @@
 
 .actionFields {
   padding-top: 0.65rem;
+}
+
+.parameterGroups {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.batchHint {
+  margin: 0;
+  color: #7b7486;
+  font-size: 0.68rem;
+  line-height: 1.5;
+}
+
+.parameterGroup {
+  padding: 0.65rem;
+  border: 1px solid #e9e5ef;
+  border-radius: 11px;
+  background: #fcfbfd;
+}
+
+.parameterGroupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.55rem;
+}
+
+.parameterGroupHeader strong {
+  color: #746d80;
+  font-size: 0.68rem;
+}
+
+.parameterGroupHeader button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.42rem;
+  border: 0;
+  border-radius: 7px;
+  color: #938c9d;
+  background: transparent;
+  font-size: 0.65rem;
+  cursor: pointer;
+}
+
+.parameterGroupHeader button:hover {
+  color: var(--builder-red);
+  background: rgba(203, 75, 83, 0.08);
+}
+
+.parameterGroupFields {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.addParameterButton {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  align-self: flex-start;
+  gap: 0.42rem;
+  padding: 0.45rem 0.7rem;
+  border: 1px dashed rgba(118, 87, 246, 0.35);
+  border-radius: 9px;
+  color: var(--builder-accent-dark);
+  background: var(--builder-accent-soft);
+  font-size: 0.7rem;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.addParameterButton:hover {
+  border-color: rgba(118, 87, 246, 0.6);
+  background: rgba(118, 87, 246, 0.13);
 }
 
 .actionNotice {
@@ -997,14 +1078,21 @@
 [data-theme='dark'] .fieldWide input,
 [data-theme='dark'] .examplePicker select,
 [data-theme='dark'] .groupActions button,
-[data-theme='dark'] .addActionButton {
+[data-theme='dark'] .addActionButton,
+[data-theme='dark'] .addParameterButton {
   color: var(--builder-ink);
   background: #26232e;
 }
 
 [data-theme='dark'] .nestedConditionGroup,
+[data-theme='dark'] .parameterGroup,
 [data-theme='dark'] .checkField {
   background: #1b1921;
+}
+
+[data-theme='dark'] .batchHint,
+[data-theme='dark'] .parameterGroupHeader strong {
+  color: #aaa3b5;
 }
 
 [data-theme='dark'] .actionNotice {
@@ -1155,6 +1243,20 @@
     display: grid;
     grid-template-columns: 1fr;
     width: 100%;
+  }
+
+  .parameterGroupFields {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .parameterGroupHeader button span {
+    display: none;
+  }
+
+  .addParameterButton {
+    width: 100%;
+    justify-content: center;
   }
 
   .field,
