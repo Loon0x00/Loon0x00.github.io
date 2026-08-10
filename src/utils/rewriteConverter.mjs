@@ -63,6 +63,20 @@ function tokenizeLegacyLine(line) {
   let quoteMode = '';
   let delimited = false;
 
+  const isDataClosingQuote = (index) => {
+    const remainder = line.slice(index + 1);
+    if (!remainder) {
+      return true;
+    }
+    if (!/^\s/.test(remainder)) {
+      return false;
+    }
+    const nextToken = remainder.trimStart();
+    return (
+      !nextToken || /^[A-Za-z][A-Za-z0-9-]*=/.test(nextToken)
+    );
+  };
+
   const push = () => {
     if (value || delimited) {
       tokens.push({value, quoted: delimited});
@@ -85,10 +99,10 @@ function tokenizeLegacyLine(line) {
         value += char;
         continue;
       }
-      if (char === quote) {
-        if (quoteMode === 'literal') {
-          value += char;
-        }
+      if (
+        char === quote &&
+        (quoteMode !== 'data' || isDataClosingQuote(index))
+      ) {
         quote = '';
         quoteMode = '';
         continue;
@@ -98,12 +112,11 @@ function tokenizeLegacyLine(line) {
     }
 
     if (char === '"' || char === "'") {
-      quote = char;
-      if (!value || value.endsWith('=')) {
-        quoteMode = 'delimiter';
+      if (!value || /^[A-Za-z][A-Za-z0-9-]*=$/.test(value)) {
+        quote = char;
+        quoteMode = value === 'data=' ? 'data' : 'delimiter';
         delimited = true;
       } else {
-        quoteMode = 'literal';
         value += char;
       }
       continue;

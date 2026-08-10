@@ -65,6 +65,31 @@ assert.match(
 );
 assert.match(converted.output, /reject_video\(200\)/);
 
+const regexWithLiteralQuotes = convertLegacyRewrite(
+  String.raw`^https?:\/\/ddgksf2013.top\/$ response-body-replace-regex Lock\s*=\s*\d Lock=4 (jqEnabled=true") $1+"&icon="+item.icon <\/i>\s*QuantumultX </i>\x20Loon`,
+);
+assert.equal(regexWithLiteralQuotes.stats.converted, 1);
+assert.equal(regexWithLiteralQuotes.stats.failed, 0);
+assert.deepEqual(regexWithLiteralQuotes.issues, []);
+assert.ok(regexWithLiteralQuotes.output.includes('/(jqEnabled=true")/'));
+assert.match(
+  regexWithLiteralQuotes.output,
+  /"\$1\+\\"&icon=\\"\+item\.icon"/,
+);
+assert.ok(regexWithLiteralQuotes.output.includes('"</i> Loon"'));
+
+const mockDataWithLiteralJsonQuotes = convertLegacyRewrite(
+  String.raw`^https:\/\/api\.bilibili\.com\/pgc\/activity\/deliver\/material\/receive\? mock-response-body data-type=text status-code=200 data="{"code":0,"data":{"closeType":"close_win","container":[],"showTime":""},"message":"success"}"`,
+);
+assert.equal(mockDataWithLiteralJsonQuotes.stats.converted, 1);
+assert.equal(mockDataWithLiteralJsonQuotes.stats.failed, 0);
+assert.deepEqual(mockDataWithLiteralJsonQuotes.issues, []);
+assert.ok(
+  mockDataWithLiteralJsonQuotes.output.includes(
+    String.raw`response.body.mock("text", "{\"code\":0,\"data\":{\"closeType\":\"close_win\",\"container\":[],\"showTime\":\"\"},\"message\":\"success\"}", 200)`,
+  ),
+);
+
 const invalidCapture = convertLegacyRewrite(
   '^https:\\/\\/example\\.com\\/(\\d+)$ header https://new.example.com/$2',
 );
