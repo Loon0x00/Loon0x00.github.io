@@ -119,6 +119,20 @@
       letter-spacing: -.02em;
     }
 
+    article h3,
+    article h4,
+    article h5,
+    article h6 {
+      margin: 20px 0 8px;
+      font-size: 16px;
+      line-height: 1.4;
+    }
+
+    .release-head + h3,
+    .release-head + h4,
+    .release-head + h5,
+    .release-head + h6 { margin-top: 0; }
+
     time {
       display: block;
       margin-top: 3px;
@@ -127,9 +141,10 @@
       white-space: nowrap;
     }
 
-    ul { margin: 0; padding-left: 1.35em; }
+    ul, ol { margin: 0; padding-left: 1.35em; }
     li + li { margin-top: 5px; }
     li::marker { color: var(--accent); }
+    article a { color: var(--accent); }
 
     code {
       padding: 2px 5px;
@@ -176,13 +191,17 @@
       <h1>更新日志</h1>
       <p class="intro">查看 Loon for Mac 的功能更新、体验优化与问题修复。最新版本始终排列在最前。</p>
       <div class="summary" aria-label="版本统计">
-        <span>23 个历史版本</span>
-        <span>最新版本 0.4.0 (69)</span>
+        <span>24 个历史版本</span>
+        <span>最新版本 0.4.0 (73)</span>
       </div>
     </header>
 
     <section class="releases" aria-label="版本列表">
       <!-- 发布新版本时，请将新的 article 插在这里，并同步更新上方版本统计。 -->
+      <article id="build-73">
+        <div class="release-head"><div><h2>0.4.0 alpha</h2><time datetime="2026-08-22">2026 年 8 月 22 日</time></div><span class="build">Build 73</span></div>
+        <h3>新增</h3><ul><li>新增策略组的添加、编辑和删除功能，支持手动选择、SSID、自动测速、故障转移和负载均衡等类型。</li><li>新增筛选节点管理，支持手动选择、关键词及正则表达式筛选。</li><li>新增代理链的添加、编辑和删除功能，支持链路节点排序和 UDP 设置。</li><li>筛选节点和代理链支持查看、复制文本配置。</li><li>版本页面新增更新检查状态及历史更新日志。</li></ul><h3>优化</h3><ul><li>重新整理节点页面，将本地节点、节点组合和订阅节点分区展示。</li><li>优化节点、策略组及代理链编辑页面的布局、焦点和窗口居中效果。</li><li>优化主窗口标题栏、侧边栏收起状态及各页面间距。</li><li>优化节点、订阅及策略组增删改后的选中状态和界面刷新。</li><li>优化本地节点或订阅变化后，筛选节点、代理链及策略组的联动刷新。</li><li>菜单栏和首页网速统一以 kB/s 为最小单位，低于 1 kB/s 时显示为零。</li><li>配置页面顶部简化为仅显示当前配置文件名，长文件名自动截断。</li><li>优化 System Extension、Content Filter 和 XPC 的安装、升级及启停状态同步。</li><li>System Extension 升级前会安全断开 VPN，降低升级后状态异常的概率。</li></ul><h3>修复</h3><ul><li>修复超大订阅流量数据可能导致应用崩溃的问题，并支持 PB、EB、ZB、YB 级流量显示。</li><li>修复更新或编辑订阅后错误跳转到本地节点的问题。</li><li>修复节点删除后部分依赖页面没有及时更新的问题。</li><li>修复右键菜单关闭后节点卡片选中状态未恢复的问题。</li><li>修复部分编辑页面首次进入时输入框焦点及文字全选异常。</li><li>修复长配置文件名可能撑开主窗口的问题。</li><li>修复若干界面显示和运行稳定性问题。</li></ul>
+      </article>
       <article id="build-69">
         <div class="release-head"><div><h2>0.4.0 alpha</h2><time datetime="2026-08-20">2026 年 8 月 20 日</time></div><span class="build">Build 69</span></div>
         <ul><li>优化首次启动引导及 System Extension 安装、授权与更新流程</li><li>重构 VPN 管理，提升连接、断开和配置管理的稳定性</li><li>升级菜单栏，支持仅图标、仅网速及组合显示，并可控制进程信息展示</li><li>重做节点添加与编辑页面，补全多种协议配置项</li><li>修复首页、策略组及其他界面的交互和显示问题</li><li>修复显示主应用无法切到前台的问题</li></ul>
