@@ -1,8 +1,16 @@
 ---
-sidebar_position: 1
+sidebar_position: 2
+sidebar_label: Script (Legacy Syntax)
+title: Script (Legacy Syntax)
 ---
 
-# Script Types
+# Script (Legacy Syntax)
+
+:::warning Legacy documentation
+
+This page describes the Script configuration syntax used in Loon 3.5.1 (982) and earlier. It remains available for maintaining existing configurations. Use the [new Script syntax](./script_v2.md) for Loon 3.5.1 (983) and later, or migrate an existing entry with the [Script Syntax Converter](/en/script-converter).
+
+:::
 
 Every script type can use the [Script API](./script_api.md).
 

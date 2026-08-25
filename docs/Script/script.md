@@ -1,8 +1,16 @@
 ---
-sidebar_position: 1
+sidebar_position: 2
+sidebar_label: Script（旧版语法）
+title: Script（旧版语法）
 ---
 
-# 脚本类型
+# Script（旧版语法）
+
+:::warning 旧版文档
+
+本文介绍 Loon 3.5.1 (982) 及之前的 Script 配置语法，仅用于维护现有配置。Loon 3.5.1 (983) 起的新配置请使用 [新版 Script 语法](./script_v2.md)，也可以通过 [Script 语法转换器](/script-converter) 迁移旧配置。
+
+:::
 
 所有脚本都可以使用 [Script API](./script_api.md)。
 

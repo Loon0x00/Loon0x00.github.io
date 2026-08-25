@@ -23,6 +23,14 @@
     "message": "Rewrite Converter",
     "description": "Navbar item with label Rewrite 转换器"
   },
+  "item.label.Script 编辑器": {
+    "message": "Script Editor",
+    "description": "Navbar item with label Script 编辑器"
+  },
+  "item.label.Script 转换器": {
+    "message": "Script Converter",
+    "description": "Navbar item with label Script 转换器"
+  },
   "item.label.教程": {
     "message": "Tutorials",
     "description": "Navbar item with label 教程"

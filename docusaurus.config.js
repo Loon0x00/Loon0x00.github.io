@@ -94,6 +94,14 @@ const config = {
                 to: '/rewrite-converter',
                 label: 'Rewrite 转换器',
               },
+              {
+                to: '/script-builder',
+                label: 'Script 编辑器',
+              },
+              {
+                to: '/script-converter',
+                label: 'Script 转换器',
+              },
             ],
           },
           {to: '/blog', label: '教程', position: 'left'},
