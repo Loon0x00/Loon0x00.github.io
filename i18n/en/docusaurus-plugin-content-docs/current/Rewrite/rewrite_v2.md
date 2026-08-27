@@ -138,6 +138,42 @@ ${request.header['Content-Type']}
 
 Both expressions refer to the same header. The `request` phase cannot reference response variables that do not exist yet.
 
+### Header value types
+
+A Request or Response header is a String when present and `null` when absent. A present header with no value is the empty string `""`, not `null`.
+
+```ini
+# The header is absent
+request if ${request.header['X-Optional']} == null then reject
+
+# The header is present with an empty value
+request if ${request.header['X-Optional']} == "" then reject
+```
+
+For `==`, choose the value type according to where the comparison value comes from:
+
+| Value type | Syntax | Use case |
+|---|---|---|
+| String | `"CN"` | Compare exactly with a fixed header value |
+| Null | `null` | Check whether the header is absent |
+| Variable | `${region}` | Use an entire String value supplied by a variable |
+| Template | `"Bearer ${token}"` | Combine fixed text with one or more variables |
+| Raw String | `` `literal ${region}` `` | Compare literal text without escapes or variable expansion |
+
+With `~=`, the right-hand value must be a Regex. Use it for headers such as Content-Type or User-Agent that follow a pattern or may contain parameters:
+
+```ini
+response if ${response.header['Content-Type']} ~= /^application\/json(?:;|$)/i then response.header.set("X-JSON", "true")
+```
+
+Headers cannot be compared directly with Number or Boolean values. A plugin variable used in a header comparison must also be a String.
+
+:::tip Raw Syntax in the editor
+
+Raw Syntax lets you enter the complete right-hand expression directly, such as `${region}`, `"CN"`, or `` `CN` ``. It is an advanced editor input mode, not a separate configuration value type; the generated expression must still follow the syntax above.
+
+:::
+
 The current version does not support reading a request or response body in an `if` condition, including `${request.body}`, `${response.body}`, and JSON key paths.
 
 ### Plugin arguments

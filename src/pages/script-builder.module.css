@@ -47,6 +47,7 @@
 .field, .fieldWide { display: flex; min-width: 125px; flex: 1 1 135px; flex-direction: column; gap: .28rem; }
 .fieldWide { min-width: 190px; flex-grow: 1.6; }
 .field > span, .fieldWide > span { color: #777181; font-size: .66rem; font-weight: 750; }
+.valueHint { flex: 1 0 100%; margin: -.08rem 0 0; color: var(--muted); font-size: .68rem; line-height: 1.45; }
 .field input, .fieldWide input, .field select, .fieldWide select, .field textarea, .fieldWide textarea, .optionCard input, .optionCard select { width: 100%; min-height: 40px; padding: .52rem .65rem; border: 1px solid #dedbe7; border-radius: 9px; outline: 0; color: var(--ink); background: #fff; font: inherit; font-size: .78rem; }
 .field textarea, .fieldWide textarea { min-height: 86px; resize: vertical; }
 .field input:focus, .fieldWide input:focus, .field select:focus, .fieldWide select:focus, .field textarea:focus, .fieldWide textarea:focus, .optionCard input:focus, .optionCard select:focus { border-color: rgba(118,87,246,.65); box-shadow: 0 0 0 3px rgba(118,87,246,.09); }

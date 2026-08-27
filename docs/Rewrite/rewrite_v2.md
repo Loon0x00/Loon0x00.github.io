@@ -138,6 +138,42 @@ ${request.header['Content-Type']}
 
 以上表达式引用同一个 Header。`request` 阶段不能引用尚未生成的响应变量。
 
+### Header 值类型
+
+Request Header 和 Response Header 存在时是 String，不存在时是 `null`。存在但值为空的 Header 是空字符串 `""`，不等于 `null`。
+
+```ini
+# Header 不存在
+request if ${request.header['X-Optional']} == null then reject
+
+# Header 存在，但值为空
+request if ${request.header['X-Optional']} == "" then reject
+```
+
+Header 使用 `==` 时，可以根据比较值的来源选择以下类型：
+
+| 值类型 | 写法 | 使用场景 |
+|---|---|---|
+| String | `"CN"` | 与固定的 Header 值精确比较 |
+| Null | `null` | 判断 Header 是否不存在 |
+| Variable | `${region}` | 整个比较值来自 String 类型的变量 |
+| Template | `"Bearer ${token}"` | 将固定文本与一个或多个变量组合后比较 |
+| Raw String | `` `literal ${region}` `` | 按字面量比较，不处理转义和变量替换 |
+
+使用 `~=` 时，右值必须是 Regex，适合匹配 Content-Type、User-Agent 等具有固定格式或包含附加参数的 Header：
+
+```ini
+response if ${response.header['Content-Type']} ~= /^application\/json(?:;|$)/i then response.header.set("X-JSON", "true")
+```
+
+Number 和 Boolean 不能直接与 Header 比较。插件变量用于 Header 比较时也必须是 String 类型。
+
+:::tip 编辑器中的 Raw Syntax
+
+Raw Syntax 用于直接填写完整右值语法，例如 `${region}`、`"CN"` 或 `` `CN` ``。它是编辑器提供的高级输入方式，不是独立的配置值类型；生成内容仍需符合上述语法。
+
+:::
+
 当前版本不支持在 `if` 条件中读取请求或响应 Body，例如 `${request.body}`、`${response.body}` 或 JSON Key Path。
 
 ### 插件参数

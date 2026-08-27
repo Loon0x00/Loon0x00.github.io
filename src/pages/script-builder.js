@@ -39,8 +39,31 @@ const EN_TEXT = {
   '正则匹配 ~=': 'Regex match ~=',
   '值类型': 'Value type',
   '字符串': 'String',
+  '固定字符串': 'Fixed string',
   '数字': 'Number',
   '布尔值': 'Boolean',
+  'Header 不存在（null）': 'Header is absent (null)',
+  '变量': 'Variable',
+  '字符串模板': 'String template',
+  'Raw String': 'Raw String',
+  'Raw Syntax': 'Raw Syntax',
+  '模板内容': 'Template content',
+  '原始内容': 'Raw content',
+  '原始语法': 'Raw syntax',
+  '用于匹配固定 Header 值。': 'Matches a fixed header value.',
+  '用于判断 Header 不存在；空值 Header 请使用空字符串。':
+    'Checks whether the header is absent; use an empty string for a present header with no value.',
+  '整个比较值来自 String 类型插件变量。':
+    'Uses an entire String value supplied by a plugin variable.',
+  '组合固定文本与 ${...} 插件变量。':
+    'Combines fixed text with ${...} plugin variables.',
+  '按字面量比较，不处理转义或变量替换。':
+    'Compares literal text without escapes or variable expansion.',
+  '直接填写完整右值语法，生成后仍需通过语法校验。':
+    'Enter the complete right-hand expression; the generated syntax must still be valid.',
+  '使用正则查找 Header 内容。': 'Searches the header value with a regular expression.',
+  'Script URL 正则仅用于匹配，不支持 as 捕获变量；需要捕获内容时可在 JavaScript 中读取 Request/Response 数据并再次执行正则。':
+    'A Script URL regex only matches the entry and does not support as capture variables. Read Request/Response data and run the regex again in JavaScript when captured content is needed.',
   '正则内容': 'Regular expression',
   '比较值': 'Comparison value',
   '删除条件': 'Delete condition',
@@ -88,6 +111,7 @@ const EN_TEXT = {
   'Response Script 必须包含强制 URL Guard': 'A Response Script must contain a mandatory URL guard',
   'Header 名称不能为空': 'Header name cannot be empty',
   '插件参数名格式不正确': 'The plugin parameter name is invalid',
+  'Raw Syntax 不能为空': 'Raw Syntax cannot be empty',
   '正则内容不能为空': 'The regular expression cannot be empty',
   '数字格式不正确': 'The number format is invalid',
   'Cron 表达式不能为空': 'Cron expression cannot be empty',
@@ -151,7 +175,10 @@ function conditionRight(item) {
     return item.valueType === 'variable' ? variable(item.value) : regex(item.value, item.flags);
   }
   if (item.valueType === 'number' || item.valueType === 'boolean') return item.value;
+  if (item.valueType === 'null') return 'null';
   if (item.valueType === 'variable') return variable(item.value);
+  if (item.valueType === 'raw') return raw(item.value);
+  if (item.valueType === 'syntax') return String(item.value).trim();
   return quote(item.value);
 }
 
@@ -165,6 +192,7 @@ function validateCondition(item) {
   if (item.operator === '~=' && item.valueType === 'variable' && !isIdentifier(item.value)) issues.push('插件参数名格式不正确');
   if (item.operator === '==' && item.valueType === 'number' && (!item.value || !Number.isFinite(Number(item.value)))) issues.push('数字格式不正确');
   if (item.operator === '==' && item.valueType === 'variable' && !isIdentifier(item.value)) issues.push('插件参数名格式不正确');
+  if (item.valueType === 'syntax' && !String(item.value).trim()) issues.push('Raw Syntax 不能为空');
   return issues;
 }
 
@@ -172,8 +200,22 @@ function Field({label, children, wide = false}) {
   return <label className={wide ? styles.fieldWide : styles.field}><span>{label}</span>{children}</label>;
 }
 
+function headerValueHint(valueType, operator, t) {
+  if (operator === '~=') return t('使用正则查找 Header 内容。');
+  const hints = {
+    string: '用于匹配固定 Header 值。',
+    null: '用于判断 Header 不存在；空值 Header 请使用空字符串。',
+    variable: '整个比较值来自 String 类型插件变量。',
+    template: '组合固定文本与 ${...} 插件变量。',
+    raw: '按字面量比较，不处理转义或变量替换。',
+    syntax: '直接填写完整右值语法，生成后仍需通过语法校验。',
+  };
+  return t(hints[valueType] || hints.string);
+}
+
 function ConditionEditor({item, phase, t, onChange, onRemove, removable}) {
   const fields = FIELD_OPTIONS.filter((field) => field.phases.includes(phase));
+  const isHeader = item.field === 'request.header' || item.field === 'response.header';
   const changeField = (field) => {
     const next = {...item, field, headerName: '', variableName: ''};
     if (field === 'url') Object.assign(next, {operator: '~=', valueType: 'regex', value: '^https:\\/\\/api\\.example\\.com', flags: 'i'});
@@ -193,12 +235,15 @@ function ConditionEditor({item, phase, t, onChange, onRemove, removable}) {
         {item.field === 'plugin' && <Field label={t('参数名')} wide><input value={item.variableName} onChange={(e) => update({variableName: e.target.value})} /></Field>}
         <Field label={t('操作符')}><select value={item.operator} onChange={(e) => changeOperator(e.target.value)}><option value="==">{t('精确匹配 ==')}</option><option value="~=">{t('正则匹配 ~=')}</option></select></Field>
         {item.operator === '~=' ? <>
-          <Field label={t('值类型')}><select value={item.valueType} onChange={(e) => update({valueType: e.target.value, value: e.target.value === 'variable' ? 'urlPattern' : '.+'})}><option value="regex">Regex</option><option value="variable">{t('插件参数')}</option></select></Field>
+          <Field label={t('值类型')}><select value={item.valueType} onChange={(e) => update({valueType: e.target.value, value: e.target.value === 'variable' ? 'urlPattern' : '.+'})}><option value="regex">Regex</option>{!isHeader && <option value="variable">{t('插件参数')}</option>}</select></Field>
           <Field label={item.valueType === 'regex' ? t('正则内容') : t('参数名')} wide><input value={item.value} onChange={(e) => update({value: e.target.value})} /></Field>
           {item.valueType === 'regex' && <Field label="Flags"><div className={styles.flags}>{['i','m','s'].map((flag) => <button type="button" key={flag} className={item.flags.includes(flag) ? styles.activeFlag : ''} onClick={() => update({flags: item.flags.includes(flag) ? item.flags.replace(flag, '') : item.flags + flag})}>{flag}</button>)}</div></Field>}
+          {isHeader && <p className={styles.valueHint}>{headerValueHint(item.valueType, item.operator, t)}</p>}
+          {item.field === 'url' && <p className={styles.valueHint}>{t('Script URL 正则仅用于匹配，不支持 as 捕获变量；需要捕获内容时可在 JavaScript 中读取 Request/Response 数据并再次执行正则。')}</p>}
         </> : <>
-          <Field label={t('值类型')}><select value={item.valueType} onChange={(e) => update({valueType: e.target.value, value: e.target.value === 'number' ? '200' : e.target.value === 'boolean' ? 'true' : e.target.value === 'variable' ? 'region' : ''})}><option value="string">{t('字符串')}</option><option value="number">{t('数字')}</option><option value="boolean">{t('布尔值')}</option><option value="variable">{t('插件参数')}</option></select></Field>
-          <Field label={t('比较值')} wide>{item.valueType === 'boolean' ? <select value={item.value} onChange={(e) => update({value: e.target.value})}><option>true</option><option>false</option></select> : <input type={item.valueType === 'number' ? 'number' : 'text'} value={item.value} onChange={(e) => update({value: e.target.value})} />}</Field>
+          <Field label={t('值类型')}><select value={item.valueType} onChange={(e) => {const nextType = e.target.value; const defaults = {string: '', number: '200', boolean: 'true', null: '', variable: 'region', template: 'Bearer ${token}', raw: 'literal ${region}', syntax: '"CN"'}; update({valueType: nextType, value: defaults[nextType]});}}><option value="string">{t(isHeader ? '固定字符串' : '字符串')}</option>{!isHeader && <option value="number">{t('数字')}</option>}{!isHeader && <option value="boolean">{t('布尔值')}</option>}{isHeader && <option value="null">{t('Header 不存在（null）')}</option>}<option value="variable">{t(isHeader ? '变量' : '插件参数')}</option>{isHeader && <option value="template">{t('字符串模板')}</option>}{isHeader && <option value="raw">{t('Raw String')}</option>}{isHeader && <option value="syntax">{t('Raw Syntax')}</option>}</select></Field>
+          {item.valueType !== 'null' && <Field label={t(item.valueType === 'variable' ? '参数名' : item.valueType === 'template' ? '模板内容' : item.valueType === 'raw' ? '原始内容' : item.valueType === 'syntax' ? '原始语法' : '比较值')} wide>{item.valueType === 'boolean' ? <select value={item.value} onChange={(e) => update({value: e.target.value})}><option>true</option><option>false</option></select> : <input type={item.valueType === 'number' ? 'number' : 'text'} value={item.value} placeholder={item.valueType === 'variable' ? 'region' : item.valueType === 'template' ? 'Bearer ${token}' : item.valueType === 'raw' ? 'literal ${region}' : item.valueType === 'syntax' ? '"CN"' : ''} onChange={(e) => update({value: e.target.value})} />}</Field>}
+          {isHeader && <p className={styles.valueHint}>{headerValueHint(item.valueType, item.operator, t)}</p>}
         </>}
       </div>
       <button type="button" className={styles.removeButton} disabled={!removable} onClick={onRemove} aria-label={t('删除条件')}>×</button>

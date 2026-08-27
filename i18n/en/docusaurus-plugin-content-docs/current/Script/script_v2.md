@@ -313,14 +313,50 @@ Logical expressions use short-circuit evaluation. Parentheses are recommended wh
 |---|---|---:|---:|
 | `${url}` | String | ✓ | ✓ |
 | `${request.method}` | String | ✓ | ✓ |
-| `${request.header['name']}` | String or missing | ✓ | ✓ |
+| `${request.header['name']}` | String or null | ✓ | ✓ |
 | `${response.status}` | Number | — | ✓ |
-| `${response.header['name']}` | String or missing | — | ✓ |
+| `${response.header['name']}` | String or null | — | ✓ |
 | `${pluginParameter}` | String, Number, Boolean | Plugin | Plugin |
 
 Header lookup is case-insensitive. A Request Script cannot reference response data that does not yet exist.
 
 A plugin parameter must have the type required by its expression position. For example, a String URL pattern can be used with `~=`, while a Boolean parameter can be used as `enable=${enabled}`.
+
+### Header value types
+
+A Request or Response header is a String when present and `null` when absent. A present header with no value is the empty string `""`, not `null`.
+
+```ini
+# The header is absent
+request if ${request.header['X-Optional']} == null then script("missing-request.js")
+
+# The header is present with an empty value
+response if ${url} ~= /\/api\// && ${response.header['X-Optional']} == "" then script("empty-response.js")
+```
+
+For `==`, choose the value type according to where the comparison value comes from:
+
+| Value type | Syntax | Use case |
+|---|---|---|
+| String | `"CN"` | Compare exactly with a fixed header value |
+| Null | `null` | Check whether the header is absent |
+| Variable | `${region}` | Use an entire String value supplied by a plugin variable |
+| Template | `"Bearer ${token}"` | Combine fixed text with one or more plugin variables |
+| Raw String | `` `literal ${region}` `` | Compare literal text without escapes or variable expansion |
+
+With `~=`, the right-hand value must be a Regex. Use it for headers such as Content-Type or User-Agent that follow a pattern or may contain parameters:
+
+```ini
+response if ${url} ~= /\/api\// && ${response.header['Content-Type']} ~= /^application\/json(?:;|$)/i then script("json.js")
+```
+
+Headers cannot be compared directly with Number or Boolean values. A plugin variable used in a header comparison must be a String.
+
+:::tip Raw Syntax in the editor
+
+Raw Syntax lets you enter the complete right-hand expression directly, such as `${region}`, `"CN"`, or `` `CN` ``. It is an advanced editor input mode, not a separate configuration value type; the generated expression must still follow the syntax above.
+
+:::
 
 ### Regular expressions
 
@@ -339,6 +375,19 @@ s    dot matches newline
 ```
 
 `~=` performs a search. Use explicit `^` and `$` anchors when the complete value must match.
+
+:::note URL regex does not provide capture variables
+
+A Script URL regex only determines whether an entry matches. It does not support Rewrite's `as` named captures and does not create capture variables such as `${name.1}`.
+
+This is because the JavaScript code can read Request/Response data such as `$request.url`, `$request.headers`, `$response.status`, and `$response.headers`, then run another regular expression and access its capture groups directly. When captured URL content is needed, perform the match in JavaScript:
+
+```javascript
+const match = $request.url.match(/\/item\/(\d+)/);
+const itemId = match?.[1];
+```
+
+:::
 
 ### Response URL guard
 
@@ -366,7 +415,7 @@ At the request stage, Loon filters candidates using the URL guard and known requ
 ### Conditions not currently supported
 
 - Request or Response Body content conditions.
-- Regex `as` named captures and captured values as arguments.
+- Regex `as` named captures and capture variables; run the regular expression again in JavaScript when captured content is needed.
 - `!=`, `!~`, logical NOT, ordering comparisons, or set operators.
 
 ## Matching and execution

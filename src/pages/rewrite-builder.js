@@ -58,8 +58,28 @@ const EN_TEXT = {
   '参数名': 'Argument name',
   '值类型': 'Value type',
   '字符串': 'String',
+  '固定字符串': 'Fixed string',
   '数字': 'Number',
   '布尔值': 'Boolean',
+  'Header 不存在（null）': 'Header is absent (null)',
+  '变量': 'Variable',
+  '字符串模板': 'String template',
+  'Raw String': 'Raw String',
+  'Raw Syntax': 'Raw Syntax',
+  '模板内容': 'Template content',
+  '原始语法': 'Raw syntax',
+  '用于匹配固定 Header 值。': 'Matches a fixed header value.',
+  '用于判断 Header 不存在；空值 Header 请使用空字符串。':
+    'Checks whether the header is absent; use an empty string for a present header with no value.',
+  '整个比较值来自 String 类型变量。':
+    'Uses an entire String value supplied by a variable.',
+  '组合固定文本与 ${...} 变量。':
+    'Combines fixed text with ${...} variables.',
+  '按字面量比较，不处理转义或变量替换。':
+    'Compares literal text without escapes or variable expansion.',
+  '直接填写完整右值语法，生成后仍需通过语法校验。':
+    'Enter the complete right-hand expression; the generated syntax must still be valid.',
+  '使用正则查找 Header 内容。': 'Searches the header value with a regular expression.',
   '比较值': 'Comparison value',
   '输入比较值': 'Enter a comparison value',
   '字段': 'Field',
@@ -135,6 +155,7 @@ const EN_TEXT = {
   '插件参数名格式不正确': 'Plugin argument name is invalid',
   '正则内容不能为空': 'Regular expression cannot be empty',
   '右侧变量名格式不正确': 'The variable name on the right is invalid',
+  'Raw Syntax 不能为空': 'Raw Syntax cannot be empty',
   '数字值格式不正确': 'Number format is invalid',
   '捕获名称格式不正确': 'Capture name is invalid',
   '条件组不能为空': 'A condition group cannot be empty',
@@ -815,6 +836,10 @@ function typedValue(type, value, raw = false) {
       return variableRef(value);
     case 'raw':
       return rawString(value);
+    case 'syntax':
+      return String(value).trim();
+    case 'template':
+      return quoteString(value);
     case 'string':
     default:
       return raw ? rawString(value) : quoteString(value);
@@ -1012,9 +1037,16 @@ function validateCondition(condition) {
 
   if (
     condition.valueType === 'variable' &&
-    !isIdentifier(condition.value)
+    !isVariableExpression(condition.value)
   ) {
     issues.push('右侧变量名格式不正确');
+  }
+
+  if (
+    condition.valueType === 'syntax' &&
+    !String(condition.value).trim()
+  ) {
+    issues.push('Raw Syntax 不能为空');
   }
 
   if (
@@ -1312,8 +1344,24 @@ function RegexFlags({value, onChange}) {
   );
 }
 
+function headerValueHint(valueType, operator, t) {
+  if (operator === '~=') return t('使用正则查找 Header 内容。');
+  const hints = {
+    string: '用于匹配固定 Header 值。',
+    null: '用于判断 Header 不存在；空值 Header 请使用空字符串。',
+    variable: '整个比较值来自 String 类型变量。',
+    template: '组合固定文本与 ${...} 变量。',
+    raw: '按字面量比较，不处理转义或变量替换。',
+    syntax: '直接填写完整右值语法，生成后仍需通过语法校验。',
+  };
+  return t(hints[valueType] || hints.string);
+}
+
 function ConditionValueEditor({condition, update}) {
   const t = useBuilderText();
+  const isHeader =
+    condition.field === 'request.header' ||
+    condition.field === 'response.header';
   if (condition.operator === '~=') {
     return (
       <>
@@ -1332,7 +1380,7 @@ function ConditionValueEditor({condition, update}) {
               })
             }>
             <option value="regex">{t('正则')}</option>
-            <option value="variable">{t('插件参数')}</option>
+            {!isHeader && <option value="variable">{t('插件参数')}</option>}
           </select>
         </FieldShell>
         <FieldShell label={condition.valueType === 'regex' ? '正则内容' : '参数名'} wide>
@@ -1360,6 +1408,11 @@ function ConditionValueEditor({condition, update}) {
             )}
           </div>
         </FieldShell>
+        {isHeader && (
+          <p className={styles.valueHint}>
+            {headerValueHint(condition.valueType, condition.operator, t)}
+          </p>
+        )}
       </>
     );
   }
@@ -1377,19 +1430,35 @@ function ConditionValueEditor({condition, update}) {
               boolean: 'true',
               null: '',
               variable: 'region',
+              template: 'Bearer ${token}',
+              raw: 'literal ${region}',
+              syntax: '"CN"',
             };
             update({valueType: nextType, value: defaults[nextType]});
           }}>
-          <option value="string">{t('字符串')}</option>
-          <option value="number">{t('数字')}</option>
-          <option value="boolean">{t('布尔值')}</option>
-          <option value="null">null</option>
-          <option value="variable">{t('插件参数')}</option>
+          <option value="string">{t(isHeader ? '固定字符串' : '字符串')}</option>
+          {!isHeader && <option value="number">{t('数字')}</option>}
+          {!isHeader && <option value="boolean">{t('布尔值')}</option>}
+          <option value="null">{t(isHeader ? 'Header 不存在（null）' : 'null')}</option>
+          <option value="variable">{t(isHeader ? '变量' : '插件参数')}</option>
+          {isHeader && <option value="template">{t('字符串模板')}</option>}
+          {isHeader && <option value="raw">{t('Raw String')}</option>}
+          {isHeader && <option value="syntax">{t('Raw Syntax')}</option>}
         </select>
       </FieldShell>
       {condition.valueType !== 'null' && (
         <FieldShell
-          label={condition.valueType === 'variable' ? '参数名' : '比较值'}
+          label={
+            condition.valueType === 'variable'
+              ? '参数名'
+              : condition.valueType === 'template'
+                ? '模板内容'
+                : condition.valueType === 'raw'
+                  ? '原始内容'
+                  : condition.valueType === 'syntax'
+                    ? '原始语法'
+                    : '比较值'
+          }
           wide>
           {condition.valueType === 'boolean' ? (
             <select
@@ -1403,12 +1472,25 @@ function ConditionValueEditor({condition, update}) {
               type={condition.valueType === 'number' ? 'number' : 'text'}
               value={condition.value}
               placeholder={
-                condition.valueType === 'variable' ? 'region' : t('输入比较值')
+                condition.valueType === 'variable'
+                  ? 'region'
+                  : condition.valueType === 'template'
+                    ? 'Bearer ${token}'
+                    : condition.valueType === 'raw'
+                      ? 'literal ${region}'
+                      : condition.valueType === 'syntax'
+                        ? '"CN"'
+                        : t('输入比较值')
               }
               onChange={(event) => update({value: event.target.value})}
             />
           )}
         </FieldShell>
+      )}
+      {isHeader && (
+        <p className={styles.valueHint}>
+          {headerValueHint(condition.valueType, condition.operator, t)}
+        </p>
       )}
     </>
   );

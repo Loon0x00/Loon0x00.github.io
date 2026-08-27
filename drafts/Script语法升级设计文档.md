@@ -438,6 +438,29 @@ binary_body_mode=false
 
 Header 名称查找不区分大小写。
 
+### 7.2.1 Header 缺失和值类型
+
+Request/Response Header 在存在时是 String，不存在时可以使用 `null` 判断：
+
+```ini
+request if ${request.header['X-Optional']} == null then script("missing-request.js")
+response if ${url} ~= /\/api\// && null == ${response.header['X-Optional']} then script("missing-response.js")
+```
+
+存在但值为空的 Header 是空 String，不等于 `null`。Header 的 `==` 比较可以使用
+String、Null、String 类型 Variable、Template 或 Raw String；`~=` 的右值使用 Regex。
+Number、Boolean 不能直接与 Header 比较。
+
+条件编辑 UI 中的名称含义：
+
+- Variable：整个比较值来自 `${...}` 变量；
+- Template：双引号字符串中包含固定文本和 `${...}` 变量替换；
+- Raw String：反引号字符串，内容按字面量处理，不执行转义或变量替换；
+- Raw Syntax：仅为 UI 的直接语法输入入口，不是核心 Parser 的正式值类型，保存时仍需
+  通过正式 Parser 校验。
+
+完整值类型和 UI 输入规则见《LNRewrite当前实现技术文档与代码审查》3.3 节。
+
 ### 7.3 Response Script 两阶段匹配
 
 Response Script 支持 Response Status/Header 后，匹配拆分为两个阶段：

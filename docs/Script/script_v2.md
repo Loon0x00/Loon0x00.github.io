@@ -313,14 +313,50 @@ request if ${request.method} == "POST" && (${request.header['X-Region']} == "CN"
 |---|---|---:|---:|
 | `${url}` | String | ✓ | ✓ |
 | `${request.method}` | String | ✓ | ✓ |
-| `${request.header['name']}` | String 或缺失 | ✓ | ✓ |
+| `${request.header['name']}` | String 或 null | ✓ | ✓ |
 | `${response.status}` | Number | — | ✓ |
-| `${response.header['name']}` | String 或缺失 | — | ✓ |
+| `${response.header['name']}` | String 或 null | — | ✓ |
 | `${插件参数}` | String、Number、Boolean | 插件 | 插件 |
 
 Header 名称查找不区分大小写。Request Script 不能引用尚未生成的 Response 数据。
 
 插件参数必须与比较位置的类型一致。例如，String 类型 URL Pattern 可以用于 `~=`，Boolean 参数可以用于 `enable=${enabled}`。
+
+### Header 值类型
+
+Request Header 和 Response Header 存在时是 String，不存在时是 `null`。存在但值为空的 Header 是空字符串 `""`，不等于 `null`。
+
+```ini
+# Header 不存在
+request if ${request.header['X-Optional']} == null then script("missing-request.js")
+
+# Header 存在，但值为空
+response if ${url} ~= /\/api\// && ${response.header['X-Optional']} == "" then script("empty-response.js")
+```
+
+Header 使用 `==` 时，可以根据比较值的来源选择以下类型：
+
+| 值类型 | 写法 | 使用场景 |
+|---|---|---|
+| String | `"CN"` | 与固定的 Header 值精确比较 |
+| Null | `null` | 判断 Header 是否不存在 |
+| Variable | `${region}` | 整个比较值来自 String 类型的插件变量 |
+| Template | `"Bearer ${token}"` | 将固定文本与一个或多个插件变量组合后比较 |
+| Raw String | `` `literal ${region}` `` | 按字面量比较，不处理转义和变量替换 |
+
+使用 `~=` 时，右值必须是 Regex，适合匹配 Content-Type、User-Agent 等具有固定格式或包含附加参数的 Header：
+
+```ini
+response if ${url} ~= /\/api\// && ${response.header['Content-Type']} ~= /^application\/json(?:;|$)/i then script("json.js")
+```
+
+Number 和 Boolean 不能直接与 Header 比较。插件变量用于 Header 比较时必须是 String 类型。
+
+:::tip 编辑器中的 Raw Syntax
+
+Raw Syntax 用于直接填写完整右值语法，例如 `${region}`、`"CN"` 或 `` `CN` ``。它是编辑器提供的高级输入方式，不是独立的配置值类型；生成内容仍需符合上述语法。
+
+:::
 
 ### 正则
 
@@ -339,6 +375,19 @@ s    点号匹配换行
 ```
 
 `~=` 是查找匹配。需要匹配完整字符串时，请显式使用 `^` 和 `$`。
+
+:::note URL 正则不支持捕获变量
+
+Script 的 URL 正则只用于判断规则是否命中，不支持 Rewrite 中的 `as` 命名捕获，也不会生成 `${名称.1}` 之类的捕获变量。
+
+这是因为 Script 执行时，JavaScript 可以直接读取 `$request.url`、`$request.headers`、`$response.status` 和 `$response.headers` 等 Request/Response 数据，并在脚本中再次执行正则、读取捕获组。需要使用 URL 捕获内容时，请在 JavaScript 中完成匹配：
+
+```javascript
+const match = $request.url.match(/\/item\/(\d+)/);
+const itemId = match?.[1];
+```
+
+:::
 
 ### Response URL Guard
 
@@ -366,7 +415,7 @@ Loon 在请求阶段先使用 URL Guard 和已知的请求数据筛选候选；R
 ### 暂不支持的条件
 
 - Request / Response Body 内容条件。
-- 正则 `as` 命名捕获和捕获结果参数。
+- 正则 `as` 命名捕获和捕获变量；需要捕获内容时请在 JavaScript 中再次执行正则。
 - `!=`、`!~`、逻辑非、大小比较和集合操作符。
 
 ## 匹配与执行规则

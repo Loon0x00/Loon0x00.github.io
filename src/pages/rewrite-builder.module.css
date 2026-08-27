@@ -465,6 +465,14 @@
   flex-grow: 1.7;
 }
 
+.valueHint {
+  flex: 1 0 100%;
+  margin: -0.12rem 0 0;
+  color: var(--builder-muted);
+  font-size: 0.68rem;
+  line-height: 1.45;
+}
+
 .iconButton {
   display: grid;
   width: 2rem;
