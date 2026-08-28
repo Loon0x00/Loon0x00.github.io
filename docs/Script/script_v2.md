@@ -239,8 +239,9 @@ script("plugin.js", {${region}, ${region}})
 1. Object 不能为空，同一个变量不能重复。
 2. 只能引用当前插件 `[Argument]` 中声明的参数。
 3. Object Key 使用参数名，Value 保留插件参数的 String、Number 或 Boolean 类型。
-4. 本地 Script 和普通 Remote Script 没有插件参数作用域，不能使用对象参数。
-5. 字符串参数与插件对象参数互斥，不支持第三个参数。
+4. `input` 或无默认选项的 `select` 参数可以没有实际值；当它只用于 Object 时，对应字段值为 `null`。
+5. 本地 Script 和普通 Remote Script 没有插件参数作用域，不能使用对象参数。
+6. 字符串参数与插件对象参数互斥，不支持第三个参数。
 
 ## `with` 指令属性
 
@@ -261,8 +262,8 @@ request if ${url} ~= /api/ then script("request.js") with enable=true, tag="API 
 | `enable` | Boolean / 插件 Boolean | `true` | 全部 Script |
 | `tag` | String | 从脚本路径派生 | 全部 Script |
 | `img_url` | String | 无 | 全部 Script |
-| `timeout` | Number | 保持各类型现有默认值 | 全部 Script |
-| `debug` | Boolean | `false` | 全部 Script |
+| `timeout` | Number / 插件 Number 或数字 String | Request / Response 为 `20`，其他类型为 `300` | 全部 Script |
+| `debug` | Boolean / 插件 Boolean | `false` | 全部 Script |
 | `requires_body` | Boolean | `false` | Request / Response |
 | `binary_body_mode` | Boolean | `false` | Request / Response |
 
@@ -270,16 +271,41 @@ request if ${url} ~= /api/ then script("request.js") with enable=true, tag="API 
 
 Cron、Network Changed 和 Generic 没有 HTTP Body，不能设置 `requires_body` 或 `binary_body_mode`。
 
+插件中的 `enable`、`timeout` 和 `debug` 可以动态引用 `[Argument]` 参数：
+
+```ini
+[Argument]
+script_timeout = input,"20",tag=超时时间
+script_debug = switch,false,true,tag=调试日志
+
+[Script]
+generic then script("tool.js") with timeout=${script_timeout}, debug=${script_debug}
+```
+
 ### 字段规则
 
 1. 没有字段时省略整个 `with`。
 2. 字段名区分大小写，并统一使用小写 snake_case。
 3. 字段不能重复，未知字段会导致当前规则无效。
-4. `enable`、`debug`、`requires_body` 和 `binary_body_mode` 必须是 Boolean。
-5. `timeout` 必须是大于 `0` 的有限 Number。
+4. `enable`、`debug`、`requires_body` 和 `binary_body_mode` 使用 Boolean；动态 `enable` 和 `debug` 必须引用插件 Boolean / switch 参数。
+5. `timeout` 必须是大于 `0` 的有限 Number，也可以引用插件 Number 或可严格解析为有限正数的 String。数字 String 只在 `timeout` 求值时转换，不会改变 `$argument` 中的值类型。
 6. `tag` 和 `img_url` 必须是 String。
-7. 插件中的 `enable` 可以引用 Boolean 类型参数，如 `${enabled}`。
-8. 除动态 `enable` 外，其他字段不接受变量或字符串模板。
+7. 插件中的 `enable`、`timeout` 和 `debug` 可以引用类型符合要求的参数，如 `${enabled}`、`${script_timeout}` 和 `${script_debug}`。
+8. `tag`、`img_url`、`requires_body` 和 `binary_body_mode` 不接受变量或字符串模板。
+
+### 动态 Option 缺值回退
+
+以下规则只适用于参数已在当前插件的 `[Argument]` 中声明、类型符合字段要求，但没有用户值或声明默认值的情况。参数未声明或类型不符合要求时，当前 Script 仍然无效，不会使用默认值。
+
+| 动态字段 | 没有实际值时 |
+|---|---|
+| `enable=${name}` | 使用 `true` |
+| `timeout=${name}` | Request / Response 使用 `20`；Cron / Network Changed / Generic 使用 `300` |
+| `debug=${name}` | 使用 `false` |
+
+条件表达式和动态 Cron 中的插件参数必须有实际值，缺值时当前 Script 无效。如果同一参数同时用于条件或 Cron 以及动态 Option，它会按必需参数处理，不会使用 Option 默认值。只用于插件 Object `$argument` 的缺值参数仍以 `null` 传入。
+
+每个使用默认值的动态 Option 都会输出一条 Warn，其中包含插件来源、Script 名称、Option、参数名和最终默认值。条件或 Cron 参数缺值时只会跳过当前无效 Script，不影响同一插件中后续的合法 Script。新旧 Script 语法使用相同的绑定和回退规则。
 
 ## HTTP 条件表达式
 
@@ -458,11 +484,13 @@ Request 条件和 Response 候选筛选读取 Request Rewrite 处理后的 URL�
 | 插件对象 `$argument` | — | — | ✓ |
 | 条件引用插件参数 | — | — | ✓ |
 | 动态 `enable` | — | — | ✓ |
+| 动态 `timeout` | — | — | ✓ |
+| 动态 `debug` | — | — | ✓ |
 | 动态 Cron | — | — | ✓ |
 
 当 Remote Script 作为插件内容解析并拥有插件参数作用域时，可以使用插件参数能力。
 
-插件参数在配置加载时完成类型校验和绑定。运行期间使用不可变参数快照，参数改变后通过配置重载发布新快照。
+插件参数在配置加载时完成类型校验和绑定。绑定时优先使用用户已保存的值，没有保存值时再使用 `[Argument]` 中的声明默认值。运行期间使用不可变参数快照，参数改变后通过配置重载发布新快照。
 
 ## 新旧语法
 

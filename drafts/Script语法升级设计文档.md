@@ -2,15 +2,16 @@
 
 ## 1. 文档状态
 
-- 状态：设计方案，待实现确认
+- 状态：已完成共享 Parser、模型、Generator、匹配与执行接入；持续同步实现细节
 - 日期：2026-08-13
+- 最近同步：2026-08-28
 - 范围：本地、远程和插件中的 Request、Response、Cron、Network Changed、Generic Script
 - 目标：统一全部 Script 配置语法，并为 HTTP Script 增加多条件匹配
 - 不涉及：JavaScript API、脚本返回结果、执行顺序、并发模型和 Rewrite Action 重构
-- 本次操作：只更新设计文档，没有修改工程代码
+- 本次同步：补充插件参数缺值、动态 option 默认回退和 Warn 日志规则
 
-`looncore` 是 iOS、macOS、tvOS 共用代码。后续实现涉及共享 Parser 和运行时接入，
-需要同时分析并验证三个平台。
+`looncore` 是 iOS、macOS、tvOS 共用代码。共享 Parser 和运行时接入的改动必须同时
+分析并验证三个平台。
 
 ## 2. 已确认的设计原则
 
@@ -24,6 +25,7 @@
 8. 所有类型统一使用 `script(...)`，其中只保存脚本路径和传给 `$argument` 的参数。
 9. `enable`、`tag`、`img_url`、`timeout`、`requires_body` 等指令属性统一放在 `with` 中。
 10. Cron、Network Changed 和 Generic Script 也升级为相同的 Action 与 `with` 结构，但各自触发方式保持不变。
+11. 插件参数必须先完成声明和类型校验；已声明但没有实际值时，条件和 Cron 拒绝当前 Script，`enable`、`timeout`、`debug` 使用 Script 默认值并输出 Warn。
 
 ## 3. 统一语法总览
 
@@ -288,6 +290,7 @@ console.log($argument.enabled); // true
 7. 不允许其中出现字符串、数字、Boolean、嵌套 Object 或请求变量。
 8. 不允许将 `${url}`、`${request.method}` 或 Header 变量放入 Object 参数。
 9. 变量的配置顺序用于标准输出；Object 字段的业务语义不依赖顺序。
+10. `[Argument] name=input,tag=...` 和无默认选项的 `select` 是合法声明；若该参数只用于 Object 且没有实际值，对应字段使用 `null`。
 
 合法：
 
@@ -359,8 +362,8 @@ with enable=${enabled}, tag="Script", timeout=20
 | `enable` | Boolean / 插件 Boolean | `true` | `enable`、`enabled` | 全部 Script |
 | `tag` | String | 从路径派生 | `tag` | 全部 Script |
 | `img_url` | String | 无 | `img-url` | 全部 Script |
-| `timeout` | Number | 按类型保持现有默认值 | `timeout` | 全部 Script |
-| `debug` | Boolean | `false` | `debug` | 全部 Script |
+| `timeout` | Number / 插件 Number 或数字 String | Request/Response 为 `20`，其他为 `300` | `timeout` | 全部 Script |
+| `debug` | Boolean / 插件 Boolean | `false` | `debug` | 全部 Script |
 | `requires_body` | Boolean | `false` | `requires-body` | 仅 Request/Response |
 | `binary_body_mode` | Boolean | `false` | `binary-body-mode` | 仅 Request/Response |
 
@@ -370,21 +373,57 @@ with enable=${enabled}, tag="Script", timeout=20
 request if ${url} ~= /api/ then script("request.js", {${region}}) with enable=${enabled}, tag="API Script", img_url="api.system", timeout=20, debug=true, requires_body=true, binary_body_mode=false
 ```
 
+插件动态配置示例：
+
+```ini
+[Argument]
+script_timeout = input, "20", tag=超时时间
+script_debug = switch, false, true, tag=调试日志
+
+[Script]
+generic then script("tool.js") with timeout=${script_timeout}, debug=${script_debug}
+```
+
 ### 6.3 字段约束
 
 1. `with` 没有字段时整体省略。
 2. 字段名称区分大小写，标准名称使用小写 snake_case。
 3. 同一字段不能重复。
 4. 未知字段必须报错，不能静默忽略。
-5. `enable`、`debug`、`requires_body`、`binary_body_mode` 使用 Boolean。
-6. `timeout` 必须是大于 0 的有限 Number。
+5. `enable`、`debug`、`requires_body`、`binary_body_mode` 使用 Boolean；`enable` 和 `debug` 可引用插件 Boolean。
+6. `timeout` 必须是大于 0 的有限 Number，也可引用插件 Number 或可严格解析为有限正数的 String。数字 String 只在 `timeout` 消费点转换，不改变 `$argument` 的值类型。
 7. `tag` 和 `img_url` 使用双引号 String。
 8. `requires_body` 和 `binary_body_mode` 只允许用于 Request/Response Script。
 9. `requires_body` 只控制是否等待 Body，`binary_body_mode` 只控制 Body 的现有表示方式；两者互不隐式开启。
-10. `enable` 可以使用当前插件中 Boolean 类型参数，例如 `${enabled}`。
-11. 除动态 `enable` 外，第一版其他 `with` 字段不接受变量或模板。
+10. `enable`、`timeout`、`debug` 可以使用当前插件中符合要求的参数，例如 `${enabled}`、`${timeout}`、`${debug}`；`enable` 和 `debug` 仍必须是 Boolean/switch。
+11. `tag`、`img_url`、`requires_body`、`binary_body_mode` 不接受变量或模板。
 
-### 6.4 标准输出顺序
+### 6.4 动态 option 缺值回退
+
+以下规则只处理“插件参数已经在 `[Argument]` 中声明、类型符合字段要求，但当前没有
+用户值或声明默认值”的情况。参数未声明或声明类型错误仍属于 Parser 错误，不能回退：
+
+| 动态字段 | 缺少实际值时的结果 |
+|---|---|
+| `enable=${name}` | 使用 `true` |
+| `timeout=${name}` | Request/Response 使用 `20`；Cron/Network Changed/Generic 使用 `300` |
+| `debug=${name}` | 使用 `false` |
+
+条件表达式和动态 Cron 必须有实际值，缺值时当前 Script 绑定失败。若同一参数同时用于
+条件或 Cron 以及上述 option，则按必需参数处理，不能使用 option 默认值。插件 Object
+`$argument` 中缺值的字段继续以 `null` 传入。
+
+每个发生默认回退的 option 输出一条 Warn，包含插件 tag/URL、Script 名称、option、
+插件参数名和最终默认值，例如：
+
+```text
+Use default plugin script option [tag=Example, url=https://example.com/example.plugin] script=Task, option=timeout, parameter=TIMEOUT, default=300
+```
+
+缺失的条件或 Cron 参数继续使用“跳过无效插件 Script 绑定”的 Warn，不影响同一插件中
+后续合法 Script。新旧 Script 语法在解析后共用以上绑定规则。
+
+### 6.5 标准输出顺序
 
 用户保存后，`with` 字段按以下固定顺序输出：
 
@@ -704,11 +743,27 @@ Response Status/Header。
 
 插件分两阶段处理：
 
-1. Parser 使用参数类型表校验条件、插件对象参数、动态 Cron 和动态 `enable`。
+1. Parser 使用参数类型表校验条件、插件对象参数、动态 Cron、动态 `enable`、动态 `timeout` 和动态 `debug`。
 2. 加载器使用实际参数值生成不可变绑定快照。
+
+Parser 阶段不使用默认值求值、不提前过滤动态 `enable`。加载器优先使用用户已保存值，
+无保存值时才使用默认值；Tunnel 在绑定后过滤 `enable=false` 的 Script。旧插件未声明
+`type` 的 `input` / `select` 值保持 String，仅当用于 `timeout` 时按数字 String 校验和转换。
+
+`input` / `select` 允许不提供声明默认值。绑定时，条件和动态 Cron 引用的参数缺值会
+拒绝当前 Script；动态 `enable`、`timeout`、`debug` 缺值分别回退到 `true`、当前
+Script 类型的默认超时、`false`，并记录带插件来源的 Warn。纯 `$argument` Object
+字段缺值保存为 `NSNull`。同一个参数被必需位置与 option 同时引用时，必需位置优先。
 
 Tunnel 运行期间不访问插件 UI 参数对象。插件参数变化后通过现有配置重载发布新的
 Script 配置快照。
+
+Request、Response、Cron、Network Changed、Generic 和 iOS 手动执行都使用绑定后的
+`pluginArguments` 快照；VPN 未运行时的手动执行也不能丢弃该参数。String `$argument`
+与 Object `$argument` 按 `argumentKind` 区分，空 Object 不得覆盖 String 参数。
+
+插件和 Remote Script 的解析/绑定 Warn 必须包含各自资源的 tag 或 URL、配置行及具体
+原因；动态 option 回退日志还包含 Script、option、参数名和默认值。
 
 ### 12.3 Remote Script 限制
 
@@ -718,6 +773,8 @@ Script 配置快照。
 ```text
 {${region}, ${level}}
 ${enabled}
+${timeout}
+${debug}
 cron ${cron}
 ```
 
@@ -946,7 +1003,11 @@ generic then script("tool.js", "manual") with tag="Tool", img_url="tool.system"
 2. Object 中引用的变量必须存在且不能重复。
 3. 动态 Cron 参数必须是 String。
 4. 动态 `enable` 参数必须是 Boolean。
-5. Object Value 保持各插件值的 String、Number、Boolean 类型。
+5. 动态 `debug` 参数必须是 Boolean/switch，字符串 `"true"` / `"false"` 不做隐式转换。
+6. 动态 `timeout` 参数可以是 Number 或数字 String，求值后必须是大于 0 的有限数。
+7. Object Value 保持各插件值的 String、Number、Boolean 类型；只用于 Object 且未赋值的旧参数使用 `null`。
+8. 条件和动态 Cron 参数必须有实际值；缺值时当前 Script 不进入有效集合。
+9. 动态 `enable`、`timeout`、`debug` 缺值时使用字段默认值并输出 Warn；参数未声明或类型不符合要求时仍报错。
 
 ### 16.4 错误处理
 
@@ -977,8 +1038,10 @@ pluginArguments
 enableValue
 tag
 imageURL
-timeout
-debugEnabled
+timeoutValue              // 固定 Number 或插件变量
+debugValue                // 固定 Boolean 或插件变量
+timeout                   // 绑定后的运行时有效值
+debugEnabled              // 绑定后的运行时有效值
 needBody
 binaryBodyMode
 order
@@ -1097,9 +1160,18 @@ Request Script 修改 URL 后，只有预匹配结果完全为空时才使用新
 - 字符串保持 String，不自动解析内容。
 - 插件对象参数生成 Object。
 - Object Key 来自变量名，Value 保持插件类型。
+- 旧插件 Object 参数未赋值时使用 Null，不影响其他已赋值字段。
 - iOS、macOS、tvOS Bridge 结果一致。
 
-### 21.3 运行语义
+### 21.3 插件绑定
+
+- 未声明、重复或声明类型错误的变量报错。
+- 条件和动态 Cron 参数缺值时拒绝当前 Script，且不影响后续 Script。
+- 动态 `enable`、`timeout`、`debug` 缺值分别回退 `true`、类型默认超时、`false`。
+- option 回退 Warn 包含插件 tag/URL、Script、option、参数名和默认值。
+- 新旧语法采用相同的缺值和回退规则。
+
+### 21.4 运行语义
 
 - HTTP 第一条命中后停止。
 - Request 和 Response 分别最多选择一条。
@@ -1113,7 +1185,7 @@ Request Script 修改 URL 后，只有预匹配结果完全为空时才使用新
 - Generic 继续由用户选择执行。
 - Rewrite 禁用逻辑无回归。
 
-### 21.4 文件保护
+### 21.5 文件保护
 
 - 加载旧配置不改写文件。
 - 打开编辑器但不保存不改写文件。

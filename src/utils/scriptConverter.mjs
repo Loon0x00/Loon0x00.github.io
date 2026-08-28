@@ -76,6 +76,7 @@ function splitTopLevel(value, separator = ',') {
   let quote = '';
   let escaped = false;
   let braces = 0;
+  let brackets = 0;
 
   for (let index = 0; index < value.length; index += 1) {
     const char = value[index];
@@ -105,14 +106,22 @@ function splitTopLevel(value, separator = ',') {
       braces -= 1;
       continue;
     }
-    if (char === separator && braces === 0) {
+    if (char === '[') {
+      brackets += 1;
+      continue;
+    }
+    if (char === ']') {
+      brackets -= 1;
+      continue;
+    }
+    if (char === separator && braces === 0 && brackets === 0) {
       parts.push(value.slice(start, index).trim());
       start = index + 1;
     }
   }
 
-  if (quote || braces !== 0) {
-    return {parts: [], error: '引号或花括号没有闭合'};
+  if (quote || braces !== 0 || brackets !== 0) {
+    return {parts: [], error: '引号、花括号或方括号没有闭合'};
   }
   parts.push(value.slice(start).trim());
   return {parts: parts.filter(Boolean), error: ''};
@@ -163,10 +172,13 @@ function parseOptions(value) {
     }
     const key = part.slice(0, separator).trim();
     const valueText = part.slice(separator + 1).trim();
-    if (!key || !valueText) {
+    if (!key || (!valueText && key !== 'argument')) {
       return {options, error: `参数 ${key || part} 缺少值`};
     }
     if (options[key] !== undefined) {
+      if (options[key] === valueText) {
+        continue;
+      }
       return {options, error: `参数 ${key} 重复`};
     }
     options[key] = valueText;
@@ -176,7 +188,7 @@ function parseOptions(value) {
 
 function pluginVariable(value) {
   const trimmed = value.trim();
-  const match = trimmed.match(/^\{([A-Za-z_][A-Za-z0-9_]*)\}$/);
+  const match = trimmed.match(/^\{([A-Za-z_][A-Za-z0-9_.]*)\}$/);
   return match ? `\${${match[1]}}` : '';
 }
 
@@ -185,16 +197,28 @@ function formatArgument(value) {
   if (trimmed.startsWith('`') && trimmed.endsWith('`')) {
     return {value: trimmed, error: ''};
   }
-  if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
-    const names = trimmed
+  let names = null;
+  if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+    const split = splitTopLevel(trimmed.slice(1, -1));
+    if (split.error) {
+      return {value: '', error: split.error};
+    }
+    names = split.parts.map((item) => {
+      const match = item.match(/^\{\s*([A-Za-z_][A-Za-z0-9_.]*)\s*\}$/);
+      return match?.[1] || '';
+    });
+  } else if (trimmed.startsWith('{') && trimmed.endsWith('}')) {
+    names = trimmed
       .slice(1, -1)
       .split(',')
       .map((name) => name.trim())
       .filter(Boolean);
+  }
+  if (names) {
     if (!names.length) {
       return {value: '', error: 'argument 插件参数对象不能为空'};
     }
-    if (names.some((name) => !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name))) {
+    if (names.some((name) => !/^[A-Za-z_][A-Za-z0-9_.]*$/.test(name))) {
       return {value: '', error: 'argument 包含无效的插件参数名'};
     }
     if (new Set(names).size !== names.length) {
@@ -297,11 +321,13 @@ function convertLegacyLine(trimmed) {
 
   let argument = '';
   if (options.argument !== undefined) {
-    const formatted = formatArgument(options.argument);
-    if (formatted.error) {
-      return {error: formatted.error};
+    if (options.argument) {
+      const formatted = formatArgument(options.argument);
+      if (formatted.error) {
+        return {error: formatted.error};
+      }
+      argument = `, ${formatted.value}`;
     }
-    argument = `, ${formatted.value}`;
     delete options.argument;
   }
 

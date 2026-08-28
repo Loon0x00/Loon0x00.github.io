@@ -239,8 +239,9 @@ Rules:
 1. The object cannot be empty, and a variable cannot occur more than once.
 2. Every variable must be declared in the current plugin's `[Argument]` section.
 3. Object keys come from parameter names; values preserve the String, Number, or Boolean plugin parameter type.
-4. Local scripts and ordinary Remote Script resources have no plugin parameter scope and cannot use object arguments.
-5. String and plugin object forms are mutually exclusive. A third argument is not supported.
+4. An `input` or a `select` without a default option may have no effective value. When it is used only in the object, its field value is `null`.
+5. Local scripts and ordinary Remote Script resources have no plugin parameter scope and cannot use object arguments.
+6. String and plugin object forms are mutually exclusive. A third argument is not supported.
 
 ## The `with` clause
 
@@ -261,8 +262,8 @@ request if ${url} ~= /api/ then script("request.js") with enable=true, tag="API 
 | `enable` | Boolean / plugin Boolean | `true` | All scripts |
 | `tag` | String | Derived from the script path | All scripts |
 | `img_url` | String | None | All scripts |
-| `timeout` | Number | Existing default for each type | All scripts |
-| `debug` | Boolean | `false` | All scripts |
+| `timeout` | Number / plugin Number or numeric String | `20` for Request / Response; `300` for other types | All scripts |
+| `debug` | Boolean / plugin Boolean | `false` | All scripts |
 | `requires_body` | Boolean | `false` | Request / Response |
 | `binary_body_mode` | Boolean | `false` | Request / Response |
 
@@ -270,16 +271,41 @@ request if ${url} ~= /api/ then script("request.js") with enable=true, tag="API 
 
 Cron, Network Changed, and Generic scripts have no HTTP body and cannot use `requires_body` or `binary_body_mode`.
 
+In a plugin, `enable`, `timeout`, and `debug` can dynamically reference `[Argument]` parameters:
+
+```ini
+[Argument]
+script_timeout = input,"20",tag=Timeout
+script_debug = switch,false,true,tag=Debug logging
+
+[Script]
+generic then script("tool.js") with timeout=${script_timeout}, debug=${script_debug}
+```
+
 ### Field rules
 
 1. Omit the complete `with` clause when it has no fields.
 2. Field names are case-sensitive and use lowercase snake_case.
 3. A field cannot be repeated. An unknown field makes the entry invalid.
-4. `enable`, `debug`, `requires_body`, and `binary_body_mode` must be Boolean.
-5. `timeout` must be a finite Number greater than `0`.
+4. `enable`, `debug`, `requires_body`, and `binary_body_mode` use Boolean values. Dynamic `enable` and `debug` must reference plugin Boolean / switch parameters.
+5. `timeout` must be a finite Number greater than `0`. It may also reference a plugin Number or a String that strictly parses as a finite positive number. A numeric String is converted only when evaluating `timeout`; its type in `$argument` is unchanged.
 6. `tag` and `img_url` must be String values.
-7. In a plugin, `enable` may reference a Boolean parameter such as `${enabled}`.
-8. Other fields do not accept variables or string templates.
+7. In a plugin, `enable`, `timeout`, and `debug` may reference parameters of the required type, such as `${enabled}`, `${script_timeout}`, and `${script_debug}`.
+8. `tag`, `img_url`, `requires_body`, and `binary_body_mode` do not accept variables or string templates.
+
+### Missing dynamic option values
+
+The following rules apply only when a parameter is declared in the current plugin's `[Argument]` section and has a valid type for the field, but has neither a user value nor a declared default. An undeclared parameter or a parameter with an invalid type still makes the current script invalid; it does not use a fallback.
+
+| Dynamic field | Result when no effective value exists |
+|---|---|
+| `enable=${name}` | Use `true` |
+| `timeout=${name}` | Use `20` for Request / Response; use `300` for Cron / Network Changed / Generic |
+| `debug=${name}` | Use `false` |
+
+A plugin parameter used in a condition or dynamic Cron expression must have an effective value; otherwise, the current script is invalid. If the same parameter is used by a condition or Cron expression and a dynamic option, it is treated as required and cannot use the option fallback. A missing parameter used only in the plugin object `$argument` is still passed as `null`.
+
+Each dynamic option fallback emits a Warn containing the plugin source, Script name, option, parameter name, and final default value. A missing condition or Cron parameter skips only the current invalid script and does not affect later valid scripts in the same plugin. Legacy and new Script syntax use the same binding and fallback rules.
 
 ## HTTP conditions
 
@@ -458,11 +484,13 @@ All three sources use the same parser and execution model:
 | Plugin object `$argument` | — | — | ✓ |
 | Plugin parameter in a condition | — | — | ✓ |
 | Dynamic `enable` | — | — | ✓ |
+| Dynamic `timeout` | — | — | ✓ |
+| Dynamic `debug` | — | — | ✓ |
 | Dynamic Cron | — | — | ✓ |
 
 A Remote Script parsed as part of plugin content can use plugin parameter features when it has that plugin's parameter scope.
 
-Plugin parameters are type-checked and bound during configuration loading. Runtime code uses an immutable parameter snapshot; changing a parameter publishes a new snapshot through configuration reload.
+Plugin parameters are type-checked and bound during configuration loading. Binding prefers a saved user value and uses the declared `[Argument]` default only when no saved value exists. Runtime code uses an immutable parameter snapshot; changing a parameter publishes a new snapshot through configuration reload.
 
 ## Legacy and new syntax
 
