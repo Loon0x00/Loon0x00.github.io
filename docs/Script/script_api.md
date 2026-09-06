@@ -592,8 +592,8 @@ $done();
 |---|---|---|
 | `data` | `Uint8Array` | 原始数据，允许长度为 0 |
 
-成功时返回 `Uint8Array`。参数类型错误或 native 压缩失败时会抛出异常；native 压缩失败的
-错误码为 `COMPRESSION_FAILED`。
+成功时返回 `Uint8Array`。参数类型错误或压缩失败时会抛出异常；压缩失败的错误码为
+`COMPRESSION_FAILED`。
 
 ### 8.5 `$utils.ungzip(data)`
 
@@ -770,8 +770,8 @@ $dns.query({
 `auto + https://` 会识别为 DoH。使用 HTTPS URL 执行 DoH3 时，需要显式设置
 `protocol:"doh3"`。
 
-`timeout` 由 Loon 现有 DNS 状态机执行，同时覆盖 A 和 AAAA。发生 CNAME 续查、UDP 重试
-或加密 DNS 回落时，后续查询继续使用同一个超时值。超时后 callback 收到 `TIMEOUT` 错误，
+`timeout` 同时覆盖 A 和 AAAA 查询。发生 CNAME 续查、UDP 重试或加密 DNS 回落时，后续
+查询继续使用同一个超时值。超时后 callback 收到 `TIMEOUT` 错误，
 `result` 为 `null`。默认超时时间为 3000ms；DoH、DoH3 或 QUIC 首次连接在较慢网络下可能需要
 更长时间，脚本可以根据网络环境显式增大该值。这个参数只控制本次 `$dns.query` 使用的
 DNS 查询，不会修改脚本本身的执行超时。
@@ -913,12 +913,3 @@ Content-Length、Transfer-Encoding 和 Content-Encoding 等相关 Header。
 | 加密 | `$crypto.aes.encrypt`、`$crypto.aes.decrypt`（Build 988+） |
 | DNS | `$dns.query`（Build 988+） |
 | 完成 | `$done` |
-
-新增数据、AES 和 DNS API 的完整验收脚本位于：
-
-```text
-AI_Home/TestCase/LNScriptDataDNSCryptoAPIs/loon-script-api-test.js
-```
-
-Bridge 源码中还存在少量调试方法或尚未执行实际状态修改的兼容占位方法，它们不属于本文档
-承诺的公开 API。脚本不应依赖这些方法在不同平台上的存在或返回值。

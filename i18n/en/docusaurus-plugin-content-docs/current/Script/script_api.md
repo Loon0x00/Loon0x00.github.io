@@ -613,8 +613,8 @@ $done();
 |---|---|---|
 | `data` | `Uint8Array` | Source data; may have a length of 0 |
 
-Returns a `Uint8Array` on success. An invalid argument type or native compression failure throws an
-exception. The error code for a native compression failure is `COMPRESSION_FAILED`.
+Returns a `Uint8Array` on success. An invalid argument type or compression failure throws an
+exception. The error code for a compression failure is `COMPRESSION_FAILED`.
 
 ### 8.5 `$utils.ungzip(data)`
 
@@ -794,9 +794,9 @@ When `auto` is used or `protocol` is omitted, the server format is detected as f
 `auto + https://` is detected as DoH. To use an HTTPS URL for DoH3, set `protocol:"doh3"`
 explicitly.
 
-`timeout` is enforced by Loon's existing DNS state machine and covers both A and AAAA queries.
-When a CNAME follow-up, UDP retry, or encrypted DNS fallback occurs, subsequent queries continue to
-use the same timeout value. After a timeout, the callback receives a `TIMEOUT` error and `result` is
+`timeout` covers both A and AAAA queries. When a CNAME follow-up, UDP retry, or encrypted DNS
+fallback occurs, subsequent queries continue to use the same timeout value. After a timeout, the
+callback receives a `TIMEOUT` error and `result` is
 `null`. The default timeout is 3000 ms. The first DoH, DoH3, or QUIC connection may need more time
 on a slower network, so a script can increase the value for its network environment. This option
 controls only the DNS query made by the current `$dns.query` call; it does not change the script's
@@ -943,13 +943,3 @@ protocol.
 | Encryption | `$crypto.aes.encrypt`, `$crypto.aes.decrypt` (Build 988+) |
 | DNS | `$dns.query` (Build 988+) |
 | Completion | `$done` |
-
-The full acceptance test for the new data, AES, and DNS APIs is located at:
-
-```text
-AI_Home/TestCase/LNScriptDataDNSCryptoAPIs/loon-script-api-test.js
-```
-
-The bridge source also contains a small number of debugging methods and compatibility placeholders
-that do not yet modify state. They are not part of the public API contract documented here. Scripts
-should not rely on these methods being present or returning the same values across platforms.
