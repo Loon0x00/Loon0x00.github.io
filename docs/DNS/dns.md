@@ -19,7 +19,7 @@ Loon 支持以下 DNS 查询方式：
 dns-server = system,119.29.29.29,223.5.5.5
 # 多个服务器使用英文逗号分隔
 doh-server = https://example.com/dns-query
-# DoQ 默认端口为 784
+# DoQ 默认端口为 853
 doq-server = quic://example.com:784
 doh3-server = h3://example.com/dns-query
 ```
