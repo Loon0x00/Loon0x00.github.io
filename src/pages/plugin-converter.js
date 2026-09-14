@@ -84,15 +84,16 @@ export default function PluginConverter() {
     partial: t('需检查', 'Needs review'), failed: t('导入失败', 'Import failed'),
   }[value]);
 
-  return <Layout title={t('插件转换器', 'Plugin Converter')} description={t('单个或批量迁移 Loon 插件，支持 ZIP 和 RAR。', 'Migrate Loon plugins individually or in batches, including ZIP and RAR archives.')}>
+  return <Layout title={t('插件转换器', 'Plugin Converter')} description={t('将旧版 Loon 插件转换为 Loon 3.5.1 及后续版本使用的新版 Script、Rewrite 语法，支持单个、批量及 ZIP/RAR 导入。', 'Convert legacy Loon plugins to the new Script and Rewrite syntax used in Loon 3.5.1 and later, with individual, batch, ZIP and RAR imports.')}>
     <main className={styles.page}>
       <header className={styles.header}>
         <div><span className={styles.eyebrow}>LOON / {t('工具', 'TOOLS')}</span>
           <Heading as="h1">{t('插件转换器', 'Plugin Converter')}</Heading>
-          <p>{t('将旧插件中的 Rewrite、Script 转为新语法。', 'Convert legacy Rewrite and Script sections to the new syntax.')}</p>
+          <p>{t('将旧版插件转换为 Loon 3.5.1 及后续版本使用的新版 Script、Rewrite 语法。', 'Convert legacy plugins to the new Script and Rewrite syntax used in Loon 3.5.1 and later.')}</p>
         </div>
         <div className={styles.links}><Link to="/rewrite-converter">Rewrite</Link><Link to="/script-converter">Script</Link></div>
       </header>
+      <p className={styles.privacy}>{t('转换范围包括 [Rewrite]、[URL Rewrite] 和 [Script] 分区；插件信息、[Argument] 参数声明、注释及其他分区原样保留。已有的新语法无需重复转换，无法转换的规则会保留原文并提示原因。下载后请在支持新版语法的 Loon 中加载并检查运行日志。', 'Conversion covers [Rewrite], [URL Rewrite] and [Script]. Plugin metadata, [Argument] declarations, comments and other sections are preserved. Existing new syntax is left unchanged; rules that cannot be converted are retained with an explanation. After downloading, load the plugin in a Loon version that supports the new syntax and check its logs.')}</p>
       <section className={`${styles.dropzone} ${dragging ? styles.dragging : ''}`} aria-label={t('导入插件', 'Import plugins')}
         onDragOver={event => { event.preventDefault(); if (!busy) setDragging(true); }}
         onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget)) setDragging(false); }}
