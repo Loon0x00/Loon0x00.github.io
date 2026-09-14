@@ -38,5 +38,9 @@
   "item.label.GitHub": {
     "message": "GitHub",
     "description": "Navbar item with label GitHub"
+  },
+  "item.label.插件转换器": {
+    "message": "Plugin Converter",
+    "description": "Navbar item with label 插件转换器"
   }
 }

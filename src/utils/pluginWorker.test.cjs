@@ -1,0 +1,31 @@
+// Run after the production build. Tests the actual browser-targeted worker without a browser.
+const fs = require('node:fs');
+const path = require('node:path');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const build = path.resolve(process.argv[2] || 'build');
+const documentRoot = path.resolve('build');
+const localePrefix = path.relative(documentRoot, build).split(path.sep).filter(Boolean).join('/');
+const scripts = fs.readdirSync(path.join(build, 'assets/js'));
+const entry = scripts.find(name => { const s = fs.readFileSync(path.join(build, 'assets/js', name), 'utf8'); return s.includes('self.onmessage=') && s.startsWith('(()=>'); });
+assert.ok(entry);
+const messages = [];
+const context = vm.createContext({console, URL, TextDecoder, TextEncoder, ArrayBuffer, Uint8Array, Uint16Array, Uint32Array, Int8Array, Int16Array, Int32Array, Float32Array, Float64Array, WebAssembly, setTimeout, clearTimeout, performance, module: {exports: {}}});
+context.self = context;
+context.location = new URL('http://localhost/' + (localePrefix ? localePrefix + '/' : '') + 'assets/js/' + entry);
+context.postMessage = message => messages.push(message);
+context.importScripts = (...urls) => { for (const url of urls) vm.runInContext(fs.readFileSync(path.join(documentRoot, new URL(url, context.location.href).pathname), 'utf8'), context); };
+context.fetch = async url => ({ok: true, arrayBuffer: async () => Uint8Array.from(fs.readFileSync(path.join(documentRoot, new URL(url, context.location.href).pathname))).buffer});
+vm.runInContext(fs.readFileSync(path.join(build, 'assets/js', entry), 'utf8'), context);
+(async () => {
+  for (let i = 0; i < 50 && !context.onmessage; i++) await new Promise(r => setTimeout(r, 10));
+  assert.equal(typeof context.onmessage, 'function');
+  const bytes = fs.readFileSync('src/utils/fixtures/plugin-stored.rar');
+  await context.onmessage({data: {type: 'import', files: [{name:'real.rar', size:bytes.length, arrayBuffer:async()=>Uint8Array.from(bytes).buffer}]}});
+  const result = messages.find(m => m.type === 'result')?.result;
+  assert.equal(result?.status, 'converted', JSON.stringify(messages));
+  assert.equal(result.converted, 2);
+  await context.onmessage({data: {type:'zip', results:[result]}});
+  assert.ok(messages.find(m => m.type === 'zip')?.bytes.length);
+  console.log('Production browser worker: RAR import, WASM asset loading and ZIP export passed.');
+})().catch(error => { console.error(error); process.exitCode = 1; });

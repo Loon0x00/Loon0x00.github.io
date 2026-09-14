@@ -1,0 +1,1 @@
+plugin-stored.rar is a generated RAR4 stored archive containing a synthetic Loon plugin at folder/plugin.lpx. It has no external source data. It verifies extraction with the actual UnRAR WebAssembly engine.

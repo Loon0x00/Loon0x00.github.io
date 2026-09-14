@@ -41,6 +41,19 @@ const config = {
     },
   },
 
+  plugins: [function pluginArchiveAssets() {
+    return {
+      name: 'plugin-archive-assets',
+      configureWebpack() {
+        return {module: {rules: [
+          {test: /unrar\.wasm$/, type: 'asset/resource'},
+          // The package imports './unrar'; resolve its JS factory before the same-name WASM.
+          {test: /unrar\.singleton\.js$/, resolve: {extensions: ['.js']}},
+        ]}};
+      },
+    };
+  }],
+
   presets: [
     [
       'classic',
@@ -86,6 +99,10 @@ const config = {
             label: '工具',
             position: 'left',
             items: [
+              {
+                to: '/plugin-converter',
+                label: '插件转换器',
+              },
               {
                 to: '/rewrite-builder',
                 label: 'Rewrite 编辑器',
