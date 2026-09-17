@@ -648,6 +648,24 @@ response if ${url} ~= /^https:\/\/example\.com/ then response.body.mock("json", 
 response if ${url} ~= /^https:\/\/example\.com/ then response.body.mock_file("json", "response_body.json", 200)
 ```
 
+也可以直接读取远程文件：
+
+```ini
+response if ${url} ~= /^https:\/\/api\.example\.com\/v1\/profile$/ then response.body.mock_file("json", "https://raw.githubusercontent.com/owner/repo/main/mock/profile.json", 200)
+```
+
+图片等二进制文件也可以直接使用远程 URL：
+
+```ini
+response if ${url} ~= /^https:\/\/example\.com\/avatar$/ then response.body.mock_file("png", "https://cdn.example.com/mock/avatar.png", 200)
+```
+
+如果远程文件保存的是 Base64 文本，需要将第四个参数设置为 `true`：
+
+```ini
+response if ${url} ~= /^https:\/\/example\.com\/avatar$/ then response.body.mock_file("png", "https://cdn.example.com/mock/avatar.base64", 200, true)
+```
+
 Base64 数据：
 
 ```ini
@@ -657,7 +675,13 @@ response if ${url} ~= /^https:\/\/example\.com/ then response.body.mock("png", "
 | 方法 | 参数顺序 |
 |---|---|
 | `response.body.mock` | 内容类型、内联 Body、可选状态码、可选 Base64 |
-| `response.body.mock_file` | 内容类型、资源文件、可选状态码、可选 Base64 |
+| `response.body.mock_file` | 内容类型、文件或远程 URL、可选状态码、可选 Base64 |
+
+`mock_file` 的方法参数为：
+
+```text
+response.body.mock_file(内容类型, 文件或远程URL[, 状态码[, 是否Base64]])
+```
 
 状态码默认 `200`，Base64 默认 `false`。需要设置 Base64 时，必须先填写状态码。
 

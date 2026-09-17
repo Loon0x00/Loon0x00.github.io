@@ -648,6 +648,24 @@ Plugin resource file:
 response if ${url} ~= /^https:\/\/example\.com/ then response.body.mock_file("json", "response_body.json", 200)
 ```
 
+A remote file can also be loaded directly:
+
+```ini
+response if ${url} ~= /^https:\/\/api\.example\.com\/v1\/profile$/ then response.body.mock_file("json", "https://raw.githubusercontent.com/owner/repo/main/mock/profile.json", 200)
+```
+
+Images and other binary files can also use a remote URL directly:
+
+```ini
+response if ${url} ~= /^https:\/\/example\.com\/avatar$/ then response.body.mock_file("png", "https://cdn.example.com/mock/avatar.png", 200)
+```
+
+If the remote file contains Base64 text, set the fourth argument to `true`:
+
+```ini
+response if ${url} ~= /^https:\/\/example\.com\/avatar$/ then response.body.mock_file("png", "https://cdn.example.com/mock/avatar.base64", 200, true)
+```
+
 Base64 data:
 
 ```ini
@@ -657,7 +675,13 @@ response if ${url} ~= /^https:\/\/example\.com/ then response.body.mock("png", "
 | Method | Argument order |
 |---|---|
 | `response.body.mock` | Content type, inline body, optional status, optional Base64 |
-| `response.body.mock_file` | Content type, resource file, optional status, optional Base64 |
+| `response.body.mock_file` | Content type, file or remote URL, optional status, optional Base64 |
+
+The `mock_file` method signature is:
+
+```text
+response.body.mock_file(content type, file or remote URL[, status code[, is Base64]])
+```
 
 The status defaults to `200`, and Base64 defaults to `false`. To provide Base64, the status argument must be present first.
 
