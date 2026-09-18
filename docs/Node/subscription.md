@@ -4,7 +4,7 @@ sidebar_position: 2
 
 # 订阅节点配置
 
-订阅节点由服务提供商通过 URL 下发。Loon 支持 Loon 标准节点、常见节点 URI、整份 Base64 编码内容，以及包含 `[General]`、`[Host]`、`[Proxy]` 的订阅文件。
+订阅节点由服务提供商通过 URL 下发。Loon 支持 Loon 标准节点、常见节点 URI、整份 Base64 编码内容，以及包含 `[DNS]`、`[Host]`、`[Proxy]` 的订阅文件。
 
 ## 添加订阅
 
@@ -46,9 +46,9 @@ sidebar_position: 2
 
 ## Section 格式
 
-### `[General]`
+### `[DNS]`
 
-`[General]` 用于设置此订阅内节点解析服务器域名时使用的 DNS：
+`[DNS]` 用于设置此订阅内节点解析服务器域名时使用的 DNS：
 
 | 参数 | 说明 |
 |---|---|
@@ -95,7 +95,7 @@ sidebar_position: 2
 2. 匹配主配置中的 Host Map；
 3. 使用主配置 `[Remote Proxy]` 中为该订阅手动设置的 `server-dns`；
 4. 使用订阅节点行中的 `server-dns`；
-5. 使用订阅文件 `[General]` 中的 DNS；
+5. 使用订阅文件 `[DNS]` 中的 DNS；
 6. 使用当前 SSID DNS 和全局 DNS。
 
 一旦命中指定的节点 DNS，查询失败时不会继续回落到下一层配置。解析 CNAME 时也会继续使用同一组 DNS。
@@ -124,7 +124,7 @@ Loon 将 `upload + download` 作为已使用流量。字段名称不区分大小
 ```ini
 # Loon subscription
 
-[General]
+[DNS]
 # 普通 DNS（DoU）
 dns-server = system,223.5.5.5,[2001:4860:4860::8888]:53
 # DNS over HTTPS（DoH）
@@ -155,7 +155,7 @@ ssid:Office-WiFi = server:system
 proxy-origin.example.com = 192.0.2.30,use-in-proxy=true
 
 [Proxy]
-# 使用订阅 [General] DNS
+# 使用订阅 [DNS] DNS
 HK-SS = Shadowsocks,hk-node.example.com,443,aes-128-gcm,"password",udp=true
 US-Trojan = Trojan,us-node.example.com,443,"password",transport=tcp,sni=us-node.example.com,udp=true
 
