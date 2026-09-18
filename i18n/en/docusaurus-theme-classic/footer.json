@@ -31,6 +31,10 @@
     "message": "GitHub",
     "description": "The label of footer link with label=GitHub linking to https://github.com/Loon0x00/LoonManual"
   },
+  "link.item.label.隐私安全声明": {
+    "message": "Privacy & Security Statement",
+    "description": "The label of footer link with label=隐私安全声明 linking to /privacy"
+  },
   "copyright": {
     "message": "Copyright © 2026 Loon Lab Limited. Built with Docusaurus.",
     "description": "The footer copyright"

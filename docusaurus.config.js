@@ -169,6 +169,10 @@ const config = {
                 label: 'GitHub',
                 href: 'https://github.com/Loon0x00/LoonManual',
               },
+              {
+                label: '隐私安全声明',
+                to: '/privacy',
+              },
             ],
           },
         ],
