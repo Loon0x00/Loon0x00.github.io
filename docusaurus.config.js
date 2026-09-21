@@ -5,6 +5,14 @@
 // See: https://docusaurus.io/docs/api/docusaurus-config
 
 import {themes as prismThemes} from 'prism-react-renderer';
+import {readFileSync} from 'node:fs';
+
+const mitmLinkTarget = JSON.parse(
+  readFileSync(new URL('./mitm-link.json', import.meta.url), 'utf8'),
+).target;
+if (!['guide', 'tool'].includes(mitmLinkTarget)) {
+  throw new Error('mitm-link.json target must be "guide" or "tool".');
+}
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
@@ -17,6 +25,7 @@ const config = {
   // Set the /<baseUrl>/ pathname under which your site is served
   // For GitHub pages deployment, it is often '/<projectName>/'
   baseUrl: '/',
+  customFields: {mitmLinkTarget},
 
   // GitHub pages deployment config.
   // If you aren't using GitHub pages, you don't need these.

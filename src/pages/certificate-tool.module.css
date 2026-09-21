@@ -1,0 +1,16 @@
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem 4rem;
+}
+
+.header { margin-bottom: 1.5rem; }
+.eyebrow {
+  color: var(--ifm-color-primary);
+  font-size: .85rem;
+  font-weight: 700;
+  letter-spacing: .09em;
+}
+.header h1 { margin: .5rem 0; font-size: clamp(2rem, 4vw, 3rem); }
+.header p, .guide { color: var(--ifm-color-emphasis-700); }
+.guide { margin-top: 1.5rem; }

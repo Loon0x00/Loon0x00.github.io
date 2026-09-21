@@ -15,6 +15,10 @@
     "message": "Tools",
     "description": "Navbar item with label 工具"
   },
+  "item.label.证书工具": {
+    "message": "Certificate Tool",
+    "description": "Navbar item with label 证书工具"
+  },
   "item.label.Rewrite 编辑器": {
     "message": "Rewrite Editor",
     "description": "Navbar item with label Rewrite 编辑器"
