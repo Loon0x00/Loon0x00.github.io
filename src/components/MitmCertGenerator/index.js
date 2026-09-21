@@ -3,7 +3,6 @@ import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import {createMitmCertificate} from '../../utils/createMitmCertificate.mjs';
 import {importMitmCertificate} from '../../utils/importMitmCertificate.mjs';
 import {createLoonCaImportUrl} from '../../utils/createLoonCaImportUrl.mjs';
-import {createIosCertificateProfile} from '../../utils/createIosCertificateProfile.mjs';
 import styles from './styles.module.css';
 
 const importErrors = {
@@ -74,12 +73,7 @@ export default function MitmCertGenerator() {
   }
 
   function installOnIos() {
-    try {
-      const profile = createIosCertificateProfile(result.certificatePem);
-      download(profile, 'loon-ca.mobileconfig', 'application/x-apple-aspen-config');
-    } catch {
-      setError(en ? 'Could not create the iOS profile in this browser.' : '此浏览器无法创建 iOS 描述文件。');
-    }
+    download(result.certificatePem, 'loon-ca.crt', 'application/x-x509-ca-cert');
   }
 
   return <section className={styles.generator} aria-label={en ? 'MitM certificate tool' : 'MitM 证书工具'}>
@@ -107,14 +101,14 @@ export default function MitmCertGenerator() {
         <h2>{en ? 'Use with Loon and iOS' : '在 Loon 和 iOS 设备上使用'}</h2>
         {en ? <ol>
           <li>{result.source === 'imported' ? 'If this CA is not already in Loon on this device, tap “Import into Loon” and confirm the import.' : 'Generate the certificate in Safari on your iPhone or iPad. Tap “Import into Loon,” open Loon when prompted, and confirm the import.'} You can also copy the configuration below into the [MitM] section of your Loon profile.</li>
-          <li>Return to Safari and tap “Install on iOS Device” to download the configuration profile, then open Settings → Profile Downloaded to install it.</li>
+          <li>Return to Safari and tap “Install on iOS Device” to download the root certificate, then follow the iOS installation prompts.</li>
           <li>Open Settings → General → About → Certificate Trust Settings and enable full trust for the root certificate. Then enable MitM in Loon.</li>
         </ol> : <ol>
           <li>{result.source === 'imported' ? '如果当前设备的 Loon 尚未导入此 CA，点「一键导入 Loon」并确认导入；' : '在 iPhone 或 iPad 的 Safari 中生成证书，点「一键导入 Loon」，按提示打开 Loon 并确认导入；'}也可以复制下面的配置片段，粘贴到 Loon 配置文件的 [MitM] 部分。</li>
-          <li>返回 Safari，点「安装到 iOS 设备」下载描述文件，再到「设置 → 已下载描述文件」完成安装。</li>
+          <li>返回 Safari，点「安装到 iOS 设备」直接下载根证书，并按 iOS 提示完成安装。</li>
           <li>前往「设置 → 通用 → 关于本机 → 证书信任设置」为该根证书开启完全信任，最后在 Loon 中启用 MitM。</li>
         </ol>}
-        <p>{en ? <>If the installation prompt does not appear, open <code>loon-ca.mobileconfig</code> from Files. The profile contains only the public CA certificate.</> : <>如果安装提示没有出现，可在“文件”中打开 <code>loon-ca.mobileconfig</code>。描述文件只包含 CA 公钥证书。</>}</p>
+        <p>{en ? <>If the installation prompt does not appear, open <code>loon-ca.crt</code> from Files. This file contains only the public CA certificate.</> : <>如果安装提示没有出现，可在“文件”中打开 <code>loon-ca.crt</code>。文件只包含 CA 公钥证书。</>}</p>
       </div>
       <label htmlFor="mitm-ca-password">{en ? 'P12 Password' : 'P12 密码'}</label>
       <input id="mitm-ca-password" readOnly value={result.password} onFocus={event => event.target.select()} />
