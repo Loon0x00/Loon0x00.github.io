@@ -37,3 +37,4 @@ jobs:
           github_token: ${{ secrets.LOONWEB }}
           # Build output to publish to the `gh-pages` branch:
           publish_dir: ./build
+          cname: nsloon.app
