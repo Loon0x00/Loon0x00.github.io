@@ -12,12 +12,12 @@ export default function CertificateTool() {
 
   return <Layout
     title={en ? 'Certificate Tool' : '证书工具'}
-    description={en ? 'Create a Loon MitM CA certificate locally in your browser.' : '在浏览器本地创建 Loon MitM CA 证书。'}>
+    description={en ? 'Create or import a Loon MitM CA certificate locally in your browser.' : '在浏览器本地创建或导入 Loon MitM CA 证书。'}>
     <main className={styles.page}>
       <header className={styles.header}>
         <span className={styles.eyebrow}>LOON / {en ? 'TOOLS' : '工具'}</span>
         <Heading as="h1">{en ? 'Certificate Tool' : '证书工具'}</Heading>
-        <p>{en ? 'Create a MitM CA certificate in your browser and import it into Loon.' : '在浏览器本地创建 MitM CA 证书，并导入 Loon。'}</p>
+        <p>{en ? 'Create a MitM CA certificate or use an existing Loon CA configuration, all in your browser.' : '在浏览器本地创建 MitM CA 证书，或使用已有的 Loon CA 配置。'}</p>
       </header>
       <MitmCertGenerator />
       <p className={styles.guide}>

@@ -26,6 +26,11 @@
 .generator button:disabled { opacity: .6; cursor: wait; }
 .generator .primary { background: var(--ifm-color-primary); color: #fff; }
 .generator .primary:hover { background: var(--ifm-color-primary-dark); }
+.importPanel { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--ifm-color-emphasis-300); }
+.importPanel h2 { margin: 0 0 .5rem; font-size: 1.1rem; }
+.importPanel label { display: block; margin-bottom: .4rem; font-weight: 600; }
+.importPanel textarea { display: block; width: 100%; box-sizing: border-box; padding: .65rem; border: 1px solid var(--ifm-color-emphasis-300); border-radius: 6px; background: var(--ifm-background-color); color: var(--ifm-font-color-base); font: .8rem/1.5 var(--ifm-font-family-monospace); resize: vertical; overflow-wrap: anywhere; }
+.importPanel button { margin-top: .75rem; }
 .actions { display: flex; flex-wrap: wrap; gap: .6rem; margin: 1rem 0; }
 .actions button { flex: 1 1 210px; }
 .result { margin-top: 1.25rem; }
