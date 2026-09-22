@@ -109,6 +109,10 @@ const config = {
             position: 'left',
             items: [
               {
+                to: '/certificate-tool',
+                label: '证书工具',
+              },
+              {
                 to: '/plugin-converter',
                 label: '插件转换器',
               },
