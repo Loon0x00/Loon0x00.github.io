@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, {useEffect, useState} from 'react';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import {createMitmCertificate} from '../../utils/createMitmCertificate.mjs';
 import {importMitmCertificate} from '../../utils/importMitmCertificate.mjs';
@@ -7,9 +7,9 @@ import styles from './styles.module.css';
 
 const importErrors = {
   'duplicate-option': ['配置中有重复的 ca-p12 或 ca-passphrase。', 'The configuration contains a duplicate ca-p12 or ca-passphrase option.'],
-  'missing-option': ['请粘贴包含 ca-p12 和 ca-passphrase 的配置。', 'Paste a configuration containing both ca-p12 and ca-passphrase.'],
+  'missing-option': ['请粘贴完整的 ca-passphrase 和 ca-p12 配置。', 'Paste the complete ca-passphrase and ca-p12 configuration.'],
   'invalid-base64': ['ca-p12 不是有效的 Base64 内容。', 'ca-p12 is not valid Base64 data.'],
-  'invalid-p12-or-password': ['P12 文件无法解密，请检查内容和密码。', 'The P12 file could not be decrypted. Check the data and password.'],
+  'invalid-p12-or-password': ['P12 文件无法解密，请检查 ca-p12 内容和 ca-passphrase。', 'The P12 file could not be decrypted. Check ca-p12 and ca-passphrase.'],
   'missing-ca-key': ['P12 中没有找到与私钥匹配的 CA 证书。', 'No CA certificate matching a private key was found in the P12 file.'],
 };
 
@@ -24,42 +24,81 @@ function download(content, filename, type) {
   window.setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function StepList({items}) {
+  const numbers = ['1️⃣', '2️⃣', '3️⃣'];
+  return <ol className={styles.stepList}>
+    {items.map((item, index) => <li key={index}>
+      <span className={styles.stepNumber} aria-hidden="true">{numbers[index]}</span>
+      <span>{item}</span>
+    </li>)}
+  </ol>;
+}
+
 export default function MitmCertGenerator() {
   const {i18n} = useDocusaurusContext();
   const en = i18n.currentLocale === 'en';
-  const [busy, setBusy] = useState(null);
+  const [mode, setMode] = useState(null);
+  const [busy, setBusy] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [pastedConfig, setPastedConfig] = useState('');
 
-  async function generate() {
-    setBusy('generate');
+  async function selectGenerate() {
+    setMode('generate');
+    setResult(null);
     setError('');
+    setCopied(false);
+    setBusy(true);
     try {
-      setResult({...await createMitmCertificate(), source: 'generated'});
-      setCopied(false);
+      setResult(await createMitmCertificate());
     } catch (cause) {
       setError(en ? 'Certificate generation failed. Open this page over HTTPS or localhost and try again.' : (cause?.message || '证书生成失败，请重试。'));
     } finally {
-      setBusy(null);
+      setBusy(false);
     }
   }
 
-  async function importConfig(event) {
-    event.preventDefault();
-    setBusy('import');
+  function selectImport() {
+    setMode('import');
+    setResult(null);
     setError('');
-    try {
-      setResult({...await importMitmCertificate(pastedConfig), source: 'imported'});
-      setPastedConfig('');
-      setCopied(false);
-    } catch (cause) {
-      setError(importErrors[cause?.code]?.[en ? 1 : 0] || (en ? 'Could not import the P12 configuration.' : '无法导入 P12 配置。'));
-    } finally {
-      setBusy(null);
-    }
+    setCopied(false);
+    setBusy(false);
   }
+
+  useEffect(() => {
+    if (mode !== 'import' || !pastedConfig.trim()) {
+      if (mode === 'import') {
+        setResult(null);
+        setError('');
+        setBusy(false);
+      }
+      return undefined;
+    }
+
+    let cancelled = false;
+    setResult(null);
+    setError('');
+    const timer = window.setTimeout(async () => {
+      setBusy(true);
+      try {
+        const imported = await importMitmCertificate(pastedConfig);
+        if (!cancelled) setResult(imported);
+      } catch (cause) {
+        if (!cancelled) {
+          setError(importErrors[cause?.code]?.[en ? 1 : 0] || (en ? 'Could not parse this CA configuration.' : '无法解析这段 CA 配置。'));
+        }
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [en, mode, pastedConfig]);
 
   const config = result && `ca-passphrase = ${result.password}\nca-p12 = ${result.p12Base64}`;
 
@@ -77,57 +116,75 @@ export default function MitmCertGenerator() {
   }
 
   return <section className={styles.generator} aria-label={en ? 'MitM certificate tool' : 'MitM 证书工具'}>
-    <p className={styles.intro}>{en ? <><strong>Generated once per click:</strong> Each click creates a new certificate and private key <strong>locally in this browser</strong>. They are <strong>never uploaded to a server</strong>. You cannot recover the certificate, P12 file, or password after refreshing or leaving this page. Import or save them now.</> : <><strong>一次性生成：</strong>每次点击都会生成一套全新的证书和私钥。生成过程仅在<strong>当前浏览器本地</strong>完成，<strong>不会上传服务器</strong>。刷新或离开页面后无法找回本次生成的证书、P12 和密码，请及时导入或备份。</>}</p>
-    <button type="button" onClick={generate} disabled={busy} className={styles.primary}>
-      {busy === 'generate' ? (en ? 'Generating certificate…' : '正在生成证书…') : (en ? 'Generate MitM CA Certificate' : '生成 MitM CA 证书')}
-    </button>
-    <form className={styles.importPanel} onSubmit={importConfig}>
-      <h2>{en ? 'Use an existing Loon CA configuration' : '使用已有的 Loon CA 配置'}</h2>
-      <p>{en ? 'Paste the ca-passphrase and ca-p12 lines from Loon. The P12 file is decoded only in this browser and is never uploaded.' : '粘贴 Loon 配置中的 ca-passphrase 和 ca-p12 两行。P12 仅在当前浏览器解析，不会上传。'}</p>
-      <label htmlFor="mitm-import-config">{en ? 'Loon CA configuration' : 'Loon CA 配置'}</label>
-      <textarea id="mitm-import-config" value={pastedConfig} onChange={event => setPastedConfig(event.target.value)} placeholder={'ca-passphrase = ...\nca-p12 = ...'} rows={4} autoComplete="off" spellCheck={false} />
-      <button type="submit" disabled={Boolean(busy) || !pastedConfig.trim()}>{busy === 'import' ? (en ? 'Importing…' : '正在导入…') : (en ? 'Use Pasted Configuration' : '使用粘贴的配置')}</button>
-    </form>
-    {error && <p role="alert" className={styles.error}>{error}</p>}
-    {result && <div className={styles.result}>
-      <p>{result.source === 'imported'
-        ? (en ? 'The CA certificate has been extracted from your P12 file. You can export it, import it into Loon, or install and trust it on iOS.' : '已从粘贴的 P12 中提取 CA 证书。现在可以导出、导入 Loon，或在 iOS 设备上安装并信任。')
-        : (en ? 'A 2048-bit RSA CA certificate valid for about five years has been generated. Import it into Loon, then install and trust the CA certificate.' : '已生成有效期约 5 年的 RSA 2048 位 CA 证书。请先导入 Loon，再安装并信任 CA 证书。')}</p>
-      <div className={styles.actions}>
-        <button type="button" className={styles.primary} onClick={() => { window.location.href = createLoonCaImportUrl(result); }}>{en ? 'Import into Loon' : '一键导入 Loon'}</button>
-        <button type="button" onClick={installOnIos}>{en ? 'Install on iOS Device' : '安装到 iOS 设备'}</button>
-      </div>
-      <div className={styles.steps}>
-        <h2>{en ? 'Use with Loon and iOS' : '在 Loon 和 iOS 设备上使用'}</h2>
-        {en ? <ol>
-          <li>{result.source === 'imported' ? 'If this CA is not already in Loon on this device, tap “Import into Loon” and confirm the import.' : 'Generate the certificate in Safari on your iPhone or iPad. Tap “Import into Loon,” open Loon when prompted, and confirm the import.'} You can also copy the configuration below into the [MitM] section of your Loon profile.</li>
-          <li>Return to Safari and tap “Install on iOS Device” to download the root certificate, then follow the iOS installation prompts.</li>
-          <li>Open Settings → General → About → Certificate Trust Settings and enable full trust for the root certificate. Then enable MitM in Loon.</li>
-        </ol> : <ol>
-          <li>{result.source === 'imported' ? '如果当前设备的 Loon 尚未导入此 CA，点「一键导入 Loon」并确认导入；' : '在 iPhone 或 iPad 的 Safari 中生成证书，点「一键导入 Loon」，按提示打开 Loon 并确认导入；'}也可以复制下面的配置片段，粘贴到 Loon 配置文件的 [MitM] 部分。</li>
-          <li>返回 Safari，点「安装到 iOS 设备」直接下载根证书，并按 iOS 提示完成安装。</li>
-          <li>前往「设置 → 通用 → 关于本机 → 证书信任设置」为该根证书开启完全信任，最后在 Loon 中启用 MitM。</li>
-        </ol>}
-        <p>{en ? <>If the installation prompt does not appear, open <code>loon-ca.crt</code> from Files. This file contains only the public CA certificate.</> : <>如果安装提示没有出现，可在“文件”中打开 <code>loon-ca.crt</code>。文件只包含 CA 公钥证书。</>}</p>
-      </div>
-      <label htmlFor="mitm-ca-password">{en ? 'P12 Password' : 'P12 密码'}</label>
-      <input id="mitm-ca-password" readOnly value={result.password} onFocus={event => event.target.select()} />
-      <div className={styles.configHeader}>
-        <label htmlFor="mitm-ca-config">{en ? 'Configuration snippet (paste into your existing [MitM] section)' : '配置片段（粘贴到现有的 [MitM] 分区）'}</label>
-        <button type="button" className={styles.copyButton} onClick={copyConfig} aria-label={en ? (copied ? 'Configuration copied' : 'Copy configuration') : (copied ? '已复制配置片段' : '复制配置片段')} title={en ? (copied ? 'Copied' : 'Copy configuration') : (copied ? '已复制' : '复制配置')}>
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            {copied ? <path d="M4 12l5 5L20 6" /> : <><rect x="8" y="8" width="11" height="11" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></>}
-          </svg>
-        </button>
-      </div>
-      <textarea id="mitm-ca-config" readOnly value={config} rows={4} onFocus={event => event.target.select()} />
-      <div className={styles.backup}>
-        <span>{en ? 'Need backup files?' : '需要备份文件？'}</span>
-        <button type="button" className={styles.textAction} onClick={() => download(result.certificatePem, 'loon-ca.crt', 'application/x-x509-ca-cert')}>{en ? 'Download CA Certificate' : '下载 CA 证书'}</button>
-        <span aria-hidden="true">·</span>
-        <button type="button" className={styles.textAction} onClick={() => download(result.p12Bytes, 'loon-ca.p12', 'application/x-pkcs12')}>{en ? 'Download P12' : '下载 P12'}</button>
-      </div>
-      <p className={styles.warning}>{en ? <><code>ca-p12</code> contains the private key. Do not share your configuration, P12 file, or import link. Your browser cannot install or trust the root certificate for you.</> : <><code>ca-p12</code> 含私钥，请勿公开分享配置、P12 文件或导入链接。浏览器不能替你安装和信任根证书。</>}</p>
+    <div className={styles.modeActions}>
+      <button type="button" onClick={selectGenerate} disabled={busy} className={mode === 'import' ? styles.inactive : styles.primary}>
+        {mode === 'generate' && busy ? (en ? 'Generating certificate…' : '正在生成证书…') : (en ? 'Generate MitM CA Certificate' : '生成 MitM CA 证书')}
+      </button>
+      <button type="button" onClick={selectImport} disabled={busy} className={mode === 'generate' ? styles.inactive : ''}>
+        {en ? 'Install Certificate from Existing Configuration' : '安装现有配置中的证书'}
+      </button>
+    </div>
+
+    {mode === 'generate' && <div className={styles.flow}>
+      <p className={styles.intro}>{en ? <><strong>Generated once per click:</strong> Each click creates a new certificate and private key <strong>locally in this browser</strong>. They are <strong>never uploaded to a server</strong>. You cannot recover the certificate, P12 file, or password after refreshing or leaving this page. Import or save them now.</> : <><strong>一次性生成：</strong>每次点击都会生成一套全新的证书和私钥。生成过程仅在<strong>当前浏览器本地</strong>完成，<strong>不会上传服务器</strong>。刷新或离开页面后无法找回本次生成的证书、P12 和密码，请及时导入或备份。</>}</p>
+      {error && <p role="alert" className={styles.error}>{error}</p>}
+      {result && <>
+        <div className={styles.actions}>
+          <button type="button" className={styles.primary} onClick={() => { window.location.href = createLoonCaImportUrl(result); }}>{en ? 'Import into Loon' : '一键导入 Loon'}</button>
+          <button type="button" onClick={installOnIos}>{en ? 'Install on iOS Device' : '安装到 iOS 设备'}</button>
+        </div>
+        <div className={styles.steps}>
+          <h2>📋 {en ? 'How to use' : '使用步骤'}</h2>
+          <StepList items={en ? [
+            <>Tap <strong>“Import into Loon”</strong> to add the certificate to the Loon configuration. <strong className={styles.caution}>On iOS 17 and earlier, Loon may report a parsing failure; you can ignore it.</strong></>,
+            <>Return to this page and tap <strong>“Install on iOS Device”</strong> to download the <strong>root certificate</strong> directly, then follow the iOS installation prompts.</>,
+            <>Open <strong>Settings → General → About → Certificate Trust Settings</strong> and enable <strong>full trust</strong> for the root certificate.</>,
+          ] : [
+            <>点<strong>「一键导入 Loon」</strong>将证书导入 Loon 的配置文件。<strong className={styles.caution}>iOS 17 及以下系统可能显示解析失败，不用理会。</strong></>,
+            <>回到该页面，点<strong>「安装到 iOS 设备」</strong>直接下载<strong>根证书</strong>，并按 iOS 提示完成安装。</>,
+            <>前往<strong>「设置 → 通用 → 关于本机 → 证书信任设置」</strong>，为该根证书开启<strong>完全信任</strong>。</>,
+          ]} />
+        </div>
+        <div className={styles.configHeader}>
+          <label htmlFor="mitm-ca-config">{en ? 'Configuration snippet (paste into your existing [MitM] section)' : '配置片段（粘贴到现有的 [MitM] 分区）'}</label>
+          <button type="button" className={styles.copyButton} onClick={copyConfig} aria-label={en ? (copied ? 'Configuration copied' : 'Copy configuration') : (copied ? '已复制配置片段' : '复制配置片段')} title={en ? (copied ? 'Copied' : 'Copy configuration') : (copied ? '已复制' : '复制配置')}>
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              {copied ? <path d="M4 12l5 5L20 6" /> : <><rect x="8" y="8" width="11" height="11" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></>}
+            </svg>
+          </button>
+        </div>
+        <textarea className={styles.configOutput} id="mitm-ca-config" readOnly value={config} rows={4} onFocus={event => event.target.select()} />
+        <div className={styles.backup}>
+          <span>{en ? 'Need backup files?' : '需要备份文件？'}</span>
+          <button type="button" className={styles.textAction} onClick={() => download(result.certificatePem, 'loon-ca.crt', 'application/x-x509-ca-cert')}>{en ? 'Download CA Certificate' : '下载 CA 证书'}</button>
+          <span aria-hidden="true">·</span>
+          <button type="button" className={styles.textAction} onClick={() => download(result.p12Bytes, 'loon-ca.p12', 'application/x-pkcs12')}>{en ? 'Download P12' : '下载 P12'}</button>
+        </div>
+        <p className={styles.warning}>{en ? <><code>ca-p12</code> contains the private key. Do not share your configuration, P12 file, or import link.</> : <><code>ca-p12</code> 含私钥，请勿公开分享配置、P12 文件或导入链接。</>}</p>
+      </>}
+    </div>}
+
+    {mode === 'import' && <div className={styles.flow}>
+      <p className={styles.importNotice}>{en ? <>Open the Loon configuration file, copy the <code>ca-passphrase =</code> and <code>ca-p12 =</code> lines under the <code>[MitM]</code> section, then paste them below.</> : <>请到 Loon 的配置文件中，复制 <code>[MitM]</code> 片段下的 <code>ca-passphrase =</code> 和 <code>ca-p12 =</code> 两行并粘贴到此处。</>}</p>
+      <label className={styles.importLabel} htmlFor="mitm-import-config">{en ? 'Loon CA configuration' : 'Loon CA 配置'}</label>
+      <textarea className={styles.importInput} id="mitm-import-config" value={pastedConfig} onChange={event => setPastedConfig(event.target.value)} placeholder={'ca-passphrase = ...\nca-p12 = ...'} rows={5} autoComplete="off" spellCheck={false} />
+      {busy && <p className={styles.parsing}>{en ? 'Parsing certificate…' : '正在解析证书…'}</p>}
+      {error && <p role="alert" className={styles.error}>{error}</p>}
+      {result && !busy && <>
+        <div className={styles.importInstall}>
+          <button type="button" className={styles.primary} onClick={installOnIos}>{en ? 'Install on iOS Device' : '安装到 iOS 设备'}</button>
+        </div>
+        <div className={styles.steps}>
+          <h2>📋 {en ? 'How to use' : '使用方式'}</h2>
+          <StepList items={en ? [
+            <>Tap <strong>“Install on iOS Device”</strong> to download the <strong>root certificate</strong> directly, then follow the iOS installation prompts.</>,
+            <>Open <strong>Settings → General → About → Certificate Trust Settings</strong> and enable <strong>full trust</strong> for the root certificate.</>,
+          ] : [
+            <>点<strong>「安装到 iOS 设备」</strong>直接下载<strong>根证书</strong>，并按 iOS 提示完成安装。</>,
+            <>前往<strong>「设置 → 通用 → 关于本机 → 证书信任设置」</strong>，为该根证书开启<strong>完全信任</strong>。</>,
+          ]} />
+        </div>
+      </>}
     </div>}
   </section>;
 }
