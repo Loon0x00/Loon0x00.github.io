@@ -79,8 +79,9 @@
   border-left-width: 4px;
   border-radius: 7px;
   background: var(--ifm-color-emphasis-100);
-  font-weight: 600;
+  font-weight: 400;
 }
+.importNotice strong { font-weight: 800; }
 .importLabel { display: block; margin-bottom: .4rem; font-weight: 600; }
 .importInstall { margin-top: 1rem; }
 .importInstall button { width: 100%; }

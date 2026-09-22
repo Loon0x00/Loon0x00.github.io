@@ -146,7 +146,7 @@ export default function MitmCertGenerator() {
           ]} />
         </div>
         <div className={styles.configHeader}>
-          <label htmlFor="mitm-ca-config">{en ? 'Configuration snippet (paste into your existing [MitM] section)' : '配置片段（粘贴到现有的 [MitM] 分区）'}</label>
+          <label htmlFor="mitm-ca-config">{en ? 'Configuration snippet' : '配置片段'}</label>
           <button type="button" className={styles.copyButton} onClick={copyConfig} aria-label={en ? (copied ? 'Configuration copied' : 'Copy configuration') : (copied ? '已复制配置片段' : '复制配置片段')} title={en ? (copied ? 'Copied' : 'Copy configuration') : (copied ? '已复制' : '复制配置')}>
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
               {copied ? <path d="M4 12l5 5L20 6" /> : <><rect x="8" y="8" width="11" height="11" rx="2" /><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2" /></>}
@@ -165,7 +165,7 @@ export default function MitmCertGenerator() {
     </div>}
 
     {mode === 'import' && <div className={styles.flow}>
-      <p className={styles.importNotice}>{en ? <>Open the Loon configuration file, copy the <code>ca-passphrase =</code> and <code>ca-p12 =</code> lines under the <code>[MitM]</code> section, then paste them below.</> : <>请到 Loon 的配置文件中，复制 <code>[MitM]</code> 片段下的 <code>ca-passphrase =</code> 和 <code>ca-p12 =</code> 两行并粘贴到此处。</>}</p>
+      <p className={styles.importNotice}>{en ? <>Open the Loon configuration file, copy the <strong><code>ca-passphrase =</code></strong> and <strong><code>ca-p12 =</code></strong> lines under the <strong><code>[MitM]</code></strong> section, then paste them below.<br />Installation is completed <strong>locally in this browser</strong> and is <strong>never uploaded to a server</strong>.</> : <>请到 Loon 的配置文件中，复制 <strong><code>[MitM]</code></strong> 片段下的 <strong><code>ca-passphrase =</code></strong> 和 <strong><code>ca-p12 =</code></strong> 两行并粘贴到此处。<br />安装仅在<strong>当前浏览器本地</strong>完成，<strong>不会上传服务器</strong>。</>}</p>
       <label className={styles.importLabel} htmlFor="mitm-import-config">{en ? 'Loon CA configuration' : 'Loon CA 配置'}</label>
       <textarea className={styles.importInput} id="mitm-import-config" value={pastedConfig} onChange={event => setPastedConfig(event.target.value)} placeholder={'ca-passphrase = ...\nca-p12 = ...'} rows={5} autoComplete="off" spellCheck={false} />
       {busy && <p className={styles.parsing}>{en ? 'Parsing certificate…' : '正在解析证书…'}</p>}
