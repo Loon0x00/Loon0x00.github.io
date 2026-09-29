@@ -410,7 +410,7 @@ The `attach` object supports:
 | Field | Description |
 |---|---|
 | `openUrl` | URL to open when the notification is tapped, such as a `loon://` or HTTPS URL |
-| `mediaUrl` | URL of an image or media attachment for the notification |
+| `mediaUrl` | HTTP(S) URL, Data URI, or raw Base64 data for a notification image |
 | `clipboard` | Text to write to the clipboard when the notification is tapped |
 
 ```javascript
@@ -427,6 +427,25 @@ $notification.post(
 );
 $done();
 ```
+
+In iOS script notifications, `mediaUrl` also accepts a Data URI in the form
+`data:image/png;base64,...` or a raw Base64 string without a prefix. The decoded image can be PNG,
+JPEG, GIF, or WebP. The following examples show both forms:
+
+```javascript
+const pngBase64 = "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKUlEQVR4nO3NMQ0AAAgDsEmbf1OggoOkSf9m2lMRCAQCgUAgEAgEX4IF6JT8TArH9ZoAAAAASUVORK5CYII=";
+
+$notification.post("Image notification", "Data URI", "Embedded image", {
+  mediaUrl: `data:image/png;base64,${pngBase64}`
+});
+$notification.post("Image notification", "Raw Base64", "Embedded image", {
+  mediaUrl: pngBase64
+});
+$done();
+```
+
+If the image cannot be decoded or downloaded, Loon logs a `ScriptNotificationImage` entry and does
+not send that image notification.
 
 Whether the notification is ultimately displayed also depends on system notification permissions
 and the notification settings in Loon.

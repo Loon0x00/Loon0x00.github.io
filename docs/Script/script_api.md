@@ -394,7 +394,7 @@ $done();
 | 字段 | 说明 |
 |---|---|
 | `openUrl` | 点击通知后打开的 URL，例如 `loon://` 或 HTTPS URL |
-| `mediaUrl` | 通知图片或媒体附件 URL |
+| `mediaUrl` | 通知图片的 HTTP(S) URL、Data URI 或纯 Base64 图片数据 |
 | `clipboard` | 点击通知时写入剪贴板的文字 |
 
 ```javascript
@@ -411,6 +411,22 @@ $notification.post(
 );
 $done();
 ```
+
+在 iOS 脚本通知中，`mediaUrl` 也支持 `data:image/png;base64,...` 形式的 Data URI，或不带前缀的纯 Base64 字符串。解码后的图片支持 PNG、JPEG、GIF 和 WebP。以下分别演示两种写法：
+
+```javascript
+const pngBase64 = "iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAAAKUlEQVR4nO3NMQ0AAAgDsEmbf1OggoOkSf9m2lMRCAQCgUAgEAgEX4IF6JT8TArH9ZoAAAAASUVORK5CYII=";
+
+$notification.post("图片通知", "Data URI", "内嵌图片", {
+  mediaUrl: `data:image/png;base64,${pngBase64}`
+});
+$notification.post("图片通知", "纯 Base64", "内嵌图片", {
+  mediaUrl: pngBase64
+});
+$done();
+```
+
+图片解码或下载失败时，Loon 会记录 `ScriptNotificationImage` 日志，不发送该条图片通知。
 
 通知是否最终展示还会受到系统通知权限和 Loon 通知设置影响。
 
