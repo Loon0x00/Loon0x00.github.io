@@ -696,7 +696,7 @@ response.body.mock_file(内容类型, 文件或远程URL[, 状态码[, 是否Bas
 Mock Body 支持的内容类型：
 
 ```text
-json, text, css, html, javascript, plain,
+json, text, text/event-stream, css, html, javascript, plain,
 png, gif, jpeg, tiff, svg, mp4, form-data
 ```
 

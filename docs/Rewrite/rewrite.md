@@ -139,7 +139,7 @@ Mock Body 参数：
 
 | 参数 | 说明 |
 |---|---|
-| `data-type` | `json`、`text`、`css`、`html`、`javascript`、`plain`、`png`、`gif`、`jpeg`、`tiff`、`svg`、`mp4` 或 `form-data` |
+| `data-type` | `json`、`text`、`text/event-stream`、`css`、`html`、`javascript`、`plain`、`png`、`gif`、`jpeg`、`tiff`、`svg`、`mp4` 或 `form-data` |
 | `data` | 直接填写 Body，使用双引号 |
 | `data-path` | URL 或 iCloud/Mock 目录中的文件 |
 | `mock-data-is-base64` | 数据是否为 Base64 |

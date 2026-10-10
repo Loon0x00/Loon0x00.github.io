@@ -8,6 +8,22 @@ This page covers common options in the `[General]` section.
 
 ## Traffic bypass
 
+### `include-tun`
+
+Requires **Build 1007 or later**. Supported in both the main configuration and plugins.
+
+The opposite of `bypass-tun`: route specified IPv4 subnets into Loon's TUN. Separate multiple subnets with commas:
+
+```ini
+include-tun = 10.7.0.1/32,10.8.0.0/24
+```
+
+- Use IPv4 CIDR notation with an explicit prefix length; `/32` represents a single IP address.
+- Domains, bare IP addresses, and IPv6 are not accepted. Argument binding with `${argumentName}`, `{argumentName}`, or `%INSERT%` is not supported.
+- Network addresses are normalized. For example, `10.8.0.9/24` is treated as `10.8.0.0/24`.
+- Entries are appended to Loon's existing included routes rather than replacing them. Entries from the main configuration and all enabled plugins are merged and deduplicated.
+- This option only controls whether traffic enters the TUN. For local loopback, also declare [IP Rewrite](../Plugin/plugin.md#ip-rewrite) in a plugin.
+
 ### `bypass-tun`
 
 Let specified IP ranges or domains bypass Loon's TUN and be handled directly by the system:
@@ -15,6 +31,26 @@ Let specified IP ranges or domains bypass Loon's TUN and be handled directly by 
 ```ini
 bypass-tun = 192.168.0.0/16,localhost,*.local
 ```
+
+### Priority of included and bypass routes
+
+When both `include-tun` and `bypass-tun` cover a destination: **if the network address and mask are identical, include-tun takes priority; if the masks differ, the more specific route takes priority.** This priority is the same whether an entry comes from the main configuration or a plugin.
+
+| include-tun | bypass-tun | Result when accessing 10.7.0.1 |
+|---|---|---|
+| `10.7.0.1/32` | `10.7.0.1/32` | Enters the TUN; the conflicting bypass entry is removed from the system settings applied for this session |
+| `10.7.0.1/32` | `10.0.0.0/8` | Enters the TUN; `/32` is more specific than `/8` |
+| `10.7.0.0/24` | `10.7.0.1/32` | Bypasses the TUN; the bypass `/32` is more specific |
+
+For example:
+
+```ini
+[General]
+bypass-tun = 10.0.0.0/8
+include-tun = 10.7.0.1/32
+```
+
+`10.7.0.1` enters the TUN, while `10.7.0.2` bypasses it. Route conflicts do not rewrite the original main configuration. See [Plugin General](../Plugin/plugin.md#general) for examples of merging entries and enabling or disabling plugins.
 
 ### `skip-proxy`
 
@@ -87,6 +123,22 @@ Requires Loon 3.2.3 (754) or later.
 ```ini
 ip-mode = dual
 ```
+
+### `ipv6-vif`
+
+Control whether an IPv6 address is configured on the TUN:
+
+| Value | Behavior |
+|---|---|
+| `off` | Disable IPv6 VIF |
+| `auto` | Decide automatically based on the current network environment |
+| `always` | Always enable IPv6 VIF |
+
+```ini
+ipv6-vif = off
+```
+
+As of **Build 1007+**, plugins can use this option to disable IPv6 VIF. If any enabled plugin explicitly declares `off`, the effective value is `off`. Plugins that declare `auto`, `always`, or omit this option leave the main configuration's mode in effect. After disabling that plugin, the main configuration's mode is restored if no other enabled plugin declares `off`.
 
 ## LAN access
 

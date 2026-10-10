@@ -139,7 +139,7 @@ Mock body options:
 
 | Option | Description |
 |---|---|
-| `data-type` | `json`, `text`, `css`, `html`, `javascript`, `plain`, `png`, `gif`, `jpeg`, `tiff`, `svg`, `mp4`, or `form-data` |
+| `data-type` | `json`, `text`, `text/event-stream`, `css`, `html`, `javascript`, `plain`, `png`, `gif`, `jpeg`, `tiff`, `svg`, `mp4`, or `form-data` |
 | `data` | Body written directly in double quotes |
 | `data-path` | URL or a file in the iCloud/Mock directory |
 | `mock-data-is-base64` | Whether the data is Base64 encoded |

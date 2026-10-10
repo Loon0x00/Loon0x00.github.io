@@ -696,7 +696,7 @@ A Rewrite containing a response mock has these restrictions:
 Supported content types:
 
 ```text
-json, text, css, html, javascript, plain,
+json, text, text/event-stream, css, html, javascript, plain,
 png, gif, jpeg, tiff, svg, mp4, form-data
 ```
 
