@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkmy_website=self.webpackChunkmy_website||[]).push([[2138],{6802:e=>{e.exports=JSON.parse('{"label":"Loon4Mac","permalink":"/blog/tags/loon-4-mac","allTagsPath":"/blog/tags","count":1,"unlisted":false}')}}]);
