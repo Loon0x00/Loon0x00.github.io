@@ -4,13 +4,13 @@ sidebar_position: 3
 
 # IP 规则
 
-## IPv4
+## `IPv4`
 
 ```ini
 IP-CIDR,118.89.204.198/32,no-resolve
 ```
 
-## IPv6
+## `IPv6`
 
 ```ini
 IP-CIDR6,2402:4e00:1200:ed00:0:9089:6dac:96b6/128
