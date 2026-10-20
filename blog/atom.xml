@@ -2,22 +2,213 @@
 <feed xmlns="http://www.w3.org/2005/Atom">
     <id>https://loon0x00.github.io/blog</id>
     <title>Loon Blog</title>
-    <updated>2024-03-15T00:00:00.000Z</updated>
+    <updated>2026-10-20T03:00:00.000Z</updated>
     <generator>https://github.com/jpmonette/feed</generator>
     <link rel="alternate" href="https://loon0x00.github.io/blog"/>
     <subtitle>Loon Blog</subtitle>
     <icon>https://loon0x00.github.io/img/favicon.png</icon>
     <entry>
-        <title type="html"><![CDATA[Welcome]]></title>
-        <id>https://loon0x00.github.io/blog/welcome</id>
-        <link href="https://loon0x00.github.io/blog/welcome"/>
-        <updated>2024-03-15T00:00:00.000Z</updated>
-        <summary type="html"><![CDATA[欢迎来到Loon基地，这里将会发布Loon的使用教程、app公告、重要版本更新日志等。]]></summary>
-        <content type="html"><![CDATA[<p>欢迎来到Loon基地，这里将会发布Loon的使用教程、app公告、重要版本更新日志等。</p>]]></content>
+        <title type="html"><![CDATA[Loon4Mac TCP 性能测试]]></title>
+        <id>https://loon0x00.github.io/blog/loon4mac-tcp-performance</id>
+        <link href="https://loon0x00.github.io/blog/loon4mac-tcp-performance"/>
+        <updated>2026-10-20T03:00:00.000Z</updated>
+        <summary type="html"><![CDATA[Loon4Mac 在 Apple M1 Max 上的本地 TCP 性能，以及自动和手动测试方法。]]></summary>
+        <content type="html"><![CDATA[<p>Loon4Mac build 1007 对 TCP 转发性能进行了优化。在 Apple M1 Max 上，单流上传达到 <strong>12.25 Gbps</strong>，单流下载达到 <strong>13.97 Gbps</strong>，四流下载合计达到 <strong>20.61 Gbps</strong>。</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="测试结果">测试结果<a href="https://loon0x00.github.io/blog/loon4mac-tcp-performance#%E6%B5%8B%E8%AF%95%E7%BB%93%E6%9E%9C" class="hash-link" aria-label="测试结果的直接链接" title="测试结果的直接链接">​</a></h2>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="测试环境">测试环境<a href="https://loon0x00.github.io/blog/loon4mac-tcp-performance#%E6%B5%8B%E8%AF%95%E7%8E%AF%E5%A2%83" class="hash-link" aria-label="测试环境的直接链接" title="测试环境的直接链接">​</a></h3>
+<table><thead><tr><th>项目</th><th>配置</th></tr></thead><tbody><tr><td>设备</td><td>Apple M1 Max，32 GB 内存</td></tr><tr><td>系统</td><td>macOS 27.2</td></tr><tr><td>Loon</td><td>Loon4Mac build 1007</td></tr><tr><td>测试工具</td><td>Apple iperf3-darwin 3.8.1</td></tr><tr><td>TUN MTU</td><td>4000</td></tr></tbody></table>
+<p>测试流量从本机发出，经 Loon 的 TUN 和 TCP 栈转发到本机 iperf3 服务端。每项预热 2 秒、测试 10 秒，各执行一次。</p>
+<table><thead><tr><th>测试项目</th><th style="text-align:right">TCP 速度</th><th style="text-align:right">Loon NE RSS 峰值</th></tr></thead><tbody><tr><td>单流上传</td><td style="text-align:right"><strong>12.25 Gbps</strong></td><td style="text-align:right">55.70 MiB</td></tr><tr><td>单流下载</td><td style="text-align:right"><strong>13.97 Gbps</strong></td><td style="text-align:right">59.28 MiB</td></tr><tr><td>四流上传（合计）</td><td style="text-align:right"><strong>10.67 Gbps</strong></td><td style="text-align:right">60.55 MiB</td></tr><tr><td>四流下载（合计）</td><td style="text-align:right"><strong>20.61 Gbps</strong></td><td style="text-align:right">90.23 MiB</td></tr></tbody></table>
+<p>测试前 Loon NE 的空载 RSS 约为 46.45 MiB。四流结果是四条 TCP 连接的合计速度；RSS 是整个 Loon 网络扩展进程的内存，不是单条连接占用。</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="测试方法">测试方法<a href="https://loon0x00.github.io/blog/loon4mac-tcp-performance#%E6%B5%8B%E8%AF%95%E6%96%B9%E6%B3%95" class="hash-link" aria-label="测试方法的直接链接" title="测试方法的直接链接">​</a></h2>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="loon-配置">Loon 配置<a href="https://loon0x00.github.io/blog/loon4mac-tcp-performance#loon-%E9%85%8D%E7%BD%AE" class="hash-link" aria-label="Loon 配置的直接链接" title="Loon 配置的直接链接">​</a></h3>
+<p>将以下内容合并到现有配置，<code>DOMAIN</code> 规则需要放在 <code>FINAL</code> 之前：</p>
+<div class="language-ini codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_biex"><pre tabindex="0" class="prism-code language-ini codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">[Host]</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">bench.loon.test = 127.0.0.1</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">[Rule]</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">DOMAIN,bench.loon.test,DIRECT</span><br></span></code></pre><div class="buttonGroup__atx"><button type="button" aria-label="复制代码到剪贴板" title="复制" class="clean-btn"><span class="copyButtonIcons_eSgA" aria-hidden="true"><svg viewBox="0 0 24 24" class="copyButtonIcon_y97N"><path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"></path></svg><svg viewBox="0 0 24 24" class="copyButtonSuccessIcon_LjdS"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"></path></svg></span></button></div></div></div>
+<p>保存配置并连接 Loon。<code>bench.loon.test</code> 不要加入 <code>real-ip</code>，也不要写入系统 <code>/etc/hosts</code>。</p>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="自动测试脚本">自动测试脚本<a href="https://loon0x00.github.io/blog/loon4mac-tcp-performance#%E8%87%AA%E5%8A%A8%E6%B5%8B%E8%AF%95%E8%84%9A%E6%9C%AC" class="hash-link" aria-label="自动测试脚本的直接链接" title="自动测试脚本的直接链接">​</a></h3>
+<p><a href="https://loon0x00.github.io/assets/files/loon4mac-tcp-test-2959e4bc50884968523cdfd2e10be1af.sh" target="_blank">下载 Loon4Mac TCP 测试脚本</a></p>
+<p>下载后直接运行：</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_biex"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">/bin/bash ~/Downloads/loon4mac-tcp-test.sh</span><br></span></code></pre><div class="buttonGroup__atx"><button type="button" aria-label="复制代码到剪贴板" title="复制" class="clean-btn"><span class="copyButtonIcons_eSgA" aria-hidden="true"><svg viewBox="0 0 24 24" class="copyButtonIcon_y97N"><path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"></path></svg><svg viewBox="0 0 24 24" class="copyButtonSuccessIcon_LjdS"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"></path></svg></span></button></div></div></div>
+<p>脚本会依次测试单流上传、单流下载、四流上传和四流下载，并记录 Loon NE 的 RSS，结果保存在当前目录。</p>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="手动测试">手动测试<a href="https://loon0x00.github.io/blog/loon4mac-tcp-performance#%E6%89%8B%E5%8A%A8%E6%B5%8B%E8%AF%95" class="hash-link" aria-label="手动测试的直接链接" title="手动测试的直接链接">​</a></h3>
+<p>先在一个终端启动服务端：</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_biex"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain">/usr/bin/arch -arm64 /usr/bin/iperf3-darwin -s -B 127.0.0.1 -p 5201</span><br></span></code></pre><div class="buttonGroup__atx"><button type="button" aria-label="复制代码到剪贴板" title="复制" class="clean-btn"><span class="copyButtonIcons_eSgA" aria-hidden="true"><svg viewBox="0 0 24 24" class="copyButtonIcon_y97N"><path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"></path></svg><svg viewBox="0 0 24 24" class="copyButtonSuccessIcon_LjdS"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"></path></svg></span></button></div></div></div>
+<p>在另一个终端依次执行：</p>
+<div class="language-bash codeBlockContainer_Ckt0 theme-code-block" style="--prism-color:#393A34;--prism-background-color:#f6f8fa"><div class="codeBlockContent_biex"><pre tabindex="0" class="prism-code language-bash codeBlock_bY9V thin-scrollbar" style="color:#393A34;background-color:#f6f8fa"><code class="codeBlockLines_e6Vv"><span class="token-line" style="color:#393A34"><span class="token plain"># 单流上传</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">/usr/bin/arch -arm64 /usr/bin/iperf3-darwin -c bench.loon.test -4 -p 5201 -O 2 -t 10 -i 1</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"># 单流下载</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">/usr/bin/arch -arm64 /usr/bin/iperf3-darwin -c bench.loon.test -4 -p 5201 -O 2 -t 10 -i 1 -R</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"># 四流上传</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">/usr/bin/arch -arm64 /usr/bin/iperf3-darwin -c bench.loon.test -4 -p 5201 -O 2 -t 10 -i 1 -P 4</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain" style="display:inline-block"></span><br></span><span class="token-line" style="color:#393A34"><span class="token plain"># 四流下载</span><br></span><span class="token-line" style="color:#393A34"><span class="token plain">/usr/bin/arch -arm64 /usr/bin/iperf3-darwin -c bench.loon.test -4 -p 5201 -O 2 -t 10 -i 1 -P 4 -R</span><br></span></code></pre><div class="buttonGroup__atx"><button type="button" aria-label="复制代码到剪贴板" title="复制" class="clean-btn"><span class="copyButtonIcons_eSgA" aria-hidden="true"><svg viewBox="0 0 24 24" class="copyButtonIcon_y97N"><path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"></path></svg><svg viewBox="0 0 24 24" class="copyButtonSuccessIcon_LjdS"><path fill="currentColor" d="M21,7L9,19L3.5,13.5L4.91,12.09L9,16.17L19.59,5.59L21,7Z"></path></svg></span></button></div></div></div>
+<p>单流查看最终的 <code>receiver</code>，四流查看 <code>[SUM] receiver</code>。客户端必须连接 <code>bench.loon.test</code>，如果直接连接 <code>127.0.0.1</code>，流量不会经过 Loon。</p>]]></content>
         <author>
             <name>Loon0x00</name>
             <uri>https://github.com/Loon0x00</uri>
         </author>
-        <category label="hello" term="hello"/>
+        <category label="Loon4Mac" term="Loon4Mac"/>
+        <category label="性能测试" term="性能测试"/>
+        <category label="macOS" term="macOS"/>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Loon4Mac DHCP 使用指南]]></title>
+        <id>https://loon0x00.github.io/blog/loon4mac-dhcp</id>
+        <link href="https://loon0x00.github.io/blog/loon4mac-dhcp"/>
+        <updated>2026-10-20T02:00:00.000Z</updated>
+        <summary type="html"><![CDATA[介绍 Loon4Mac DHCP 的使用条件、配置方法、设备策略、租约管理和注意事项。]]></summary>
+        <content type="html"><![CDATA[<p>Loon4Mac（build 1007+）DHCP 负责在设备接入局域网时自动分配 IP 地址、子网掩码、默认网关和 DNS。Loon4Mac 可以在有线网络中提供独立的 DHCP 服务，并根据全局设置或单设备策略，决定设备是否使用 Loon 网关以及是否由 Loon 接管 UDP DNS。</p>
+<p><img decoding="async" loading="lazy" alt="Loon4Mac DHCP 配置下发流程" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjAwIDYyMCIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsbGVkYnk9InRpdGxlIGRlc2MiPgogIDx0aXRsZSBpZD0idGl0bGUiPkxvb240TWFjIERIQ1Ag6YWN572u5rWB56iLPC90aXRsZT4KICA8ZGVzYyBpZD0iZGVzYyI+6K6+5aSH5ZCRIExvb24gREhDUCDor7fmsYLnvZHnu5zphY3nva7vvIxMb29uIOi/lOWbniBJUOOAgeWtkOe9keOAgee9keWFs+WSjCBETlPvvIzorr7lpIfpmo/lkI7ov57mjqXlsYDln5/nvZHmiJbkvb/nlKggTG9vbiDnvZHlhbPjgII8L2Rlc2M+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2Y4ZmJmZiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZGY0ZmYiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9InNlcnZlciIgeDE9IjAiIHkxPSIwIiB4Mj0iMSIgeTI9IjEiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAiIHN0b3AtY29sb3I9IiM1YzliZmYiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxIiBzdG9wLWNvbG9yPSIjMzE2ZmU4Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogICAgPGZpbHRlciBpZD0ic2hhZG93IiB4PSItMjAlIiB5PSItMjAlIiB3aWR0aD0iMTQwJSIgaGVpZ2h0PSIxNDAlIj4KICAgICAgPGZlRHJvcFNoYWRvdyBkeD0iMCIgZHk9IjkiIHN0ZERldmlhdGlvbj0iMTQiIGZsb29kLWNvbG9yPSIjMTgzYTcyIiBmbG9vZC1vcGFjaXR5PSIuMTIiLz4KICAgIDwvZmlsdGVyPgogICAgPG1hcmtlciBpZD0iYmx1ZUFycm93IiB2aWV3Qm94PSIwIDAgMTAgMTAiIHJlZlg9IjkiIHJlZlk9IjUiIG1hcmtlcldpZHRoPSI4IiBtYXJrZXJIZWlnaHQ9IjgiIG9yaWVudD0iYXV0byI+CiAgICAgIDxwYXRoIGQ9Ik0gMCAwIEwgMTAgNSBMIDAgMTAgeiIgZmlsbD0iIzRkODdlZSIvPgogICAgPC9tYXJrZXI+CiAgICA8bWFya2VyIGlkPSJncmVlbkFycm93IiB2aWV3Qm94PSIwIDAgMTAgMTAiIHJlZlg9IjkiIHJlZlk9IjUiIG1hcmtlcldpZHRoPSI4IiBtYXJrZXJIZWlnaHQ9IjgiIG9yaWVudD0iYXV0byI+CiAgICAgIDxwYXRoIGQ9Ik0gMCAwIEwgMTAgNSBMIDAgMTAgeiIgZmlsbD0iIzM0YTg3NiIvPgogICAgPC9tYXJrZXI+CiAgICA8c3R5bGU+CiAgICAgIHRleHQgeyBmb250LWZhbWlseTogLWFwcGxlLXN5c3RlbSwgQmxpbmtNYWNTeXN0ZW1Gb250LCAiUGluZ0ZhbmcgU0MiLCAiTWljcm9zb2Z0IFlhSGVpIiwgc2Fucy1zZXJpZjsgfQogICAgICAudGl0bGUgeyBmb250LXNpemU6IDMwcHg7IGZvbnQtd2VpZ2h0OiA3MDA7IGZpbGw6ICMxNzI0M2I7IH0KICAgICAgLmxhYmVsIHsgZm9udC1zaXplOiAyMnB4OyBmb250LXdlaWdodDogNjUwOyBmaWxsOiAjMjAzMDRjOyB9CiAgICAgIC5zdWIgeyBmb250LXNpemU6IDE4cHg7IGZpbGw6ICM2ODc5OTU7IH0KICAgICAgLml0ZW0geyBmb250LXNpemU6IDE3cHg7IGZvbnQtd2VpZ2h0OiA2MDA7IGZpbGw6ICMzMTUwNzg7IH0KICAgIDwvc3R5bGU+CiAgPC9kZWZzPgogIDxyZWN0IHdpZHRoPSIxMjAwIiBoZWlnaHQ9IjYyMCIgcng9IjMyIiBmaWxsPSJ1cmwoI2JnKSIvPgogIDx0ZXh0IHg9IjYwMCIgeT0iNjIiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJ0aXRsZSI+6K6+5aSH5o6l5YWl5pe277yMTG9vbiDoh6rliqjkuIvlj5HnvZHnu5zphY3nva48L3RleHQ+CgogIDxnIGZpbHRlcj0idXJsKCNzaGFkb3cpIj4KICAgIDxyZWN0IHg9Ijc0IiB5PSIxNzAiIHdpZHRoPSIyNDUiIGhlaWdodD0iMjg1IiByeD0iMjgiIGZpbGw9IiNmZmYiLz4KICA8L2c+CiAgPHJlY3QgeD0iMTQ1IiB5PSIyMTEiIHdpZHRoPSIxMDMiIGhlaWdodD0iMTY2IiByeD0iMjEiIGZpbGw9IiNkY2U4ZmIiIHN0cm9rZT0iIzg5YTdkNSIgc3Ryb2tlLXdpZHRoPSI0Ii8+CiAgPHJlY3QgeD0iMTYzIiB5PSIyMzAiIHdpZHRoPSI2NyIgaGVpZ2h0PSIxMTEiIHJ4PSI5IiBmaWxsPSIjZmZmIi8+CiAgPGNpcmNsZSBjeD0iMTk2IiBjeT0iMzU3IiByPSI3IiBmaWxsPSIjODlhN2Q1Ii8+CiAgPHRleHQgeD0iMTk2IiB5PSI0MTQiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJsYWJlbCI+5o6l5YWl6K6+5aSHPC90ZXh0PgoKICA8cGF0aCBkPSJNIDMxOSAyNDQgSCA0NzQiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzRkODdlZSIgc3Ryb2tlLXdpZHRoPSI2IiBzdHJva2UtbGluZWNhcD0icm91bmQiIG1hcmtlci1lbmQ9InVybCgjYmx1ZUFycm93KSIvPgogIDx0ZXh0IHg9IjM5NiIgeT0iMjE5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0ic3ViIj7or7fmsYLnvZHnu5zphY3nva48L3RleHQ+CiAgPHBhdGggZD0iTSA0NzQgMzU5IEggMzE5IiBmaWxsPSJub25lIiBzdHJva2U9IiMzNGE4NzYiIHN0cm9rZS13aWR0aD0iNiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBtYXJrZXItZW5kPSJ1cmwoI2dyZWVuQXJyb3cpIi8+CiAgPHRleHQgeD0iMzk2IiB5PSIzOTciIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJzdWIiPui/lOWbnuenn+e6pjwvdGV4dD4KCiAgPGcgZmlsdGVyPSJ1cmwoI3NoYWRvdykiPgogICAgPHJlY3QgeD0iNDc0IiB5PSIxMzQiIHdpZHRoPSIyOTQiIGhlaWdodD0iMzU3IiByeD0iMzIiIGZpbGw9InVybCgjc2VydmVyKSIvPgogIDwvZz4KICA8cmVjdCB4PSI1MjciIHk9IjE4NCIgd2lkdGg9IjE4OCIgaGVpZ2h0PSI1MiIgcng9IjEyIiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9Ii45NSIvPgogIDxjaXJjbGUgY3g9IjU1NSIgY3k9IjIxMCIgcj0iOCIgZmlsbD0iIzRlOGRmNSIvPgogIDxyZWN0IHg9IjU3OSIgeT0iMjAxIiB3aWR0aD0iMTA2IiBoZWlnaHQ9IjE4IiByeD0iOSIgZmlsbD0iI2M4ZGFmOCIvPgogIDxyZWN0IHg9IjUyNyIgeT0iMjUxIiB3aWR0aD0iMTg4IiBoZWlnaHQ9IjUyIiByeD0iMTIiIGZpbGw9IiNmZmYiIGZpbGwtb3BhY2l0eT0iLjk1Ii8+CiAgPGNpcmNsZSBjeD0iNTU1IiBjeT0iMjc3IiByPSI4IiBmaWxsPSIjNGU4ZGY1Ii8+CiAgPHJlY3QgeD0iNTc5IiB5PSIyNjgiIHdpZHRoPSIxMDYiIGhlaWdodD0iMTgiIHJ4PSI5IiBmaWxsPSIjYzhkYWY4Ii8+CiAgPHJlY3QgeD0iNTI3IiB5PSIzMTgiIHdpZHRoPSIxODgiIGhlaWdodD0iNTIiIHJ4PSIxMiIgZmlsbD0iI2ZmZiIgZmlsbC1vcGFjaXR5PSIuOTUiLz4KICA8Y2lyY2xlIGN4PSI1NTUiIGN5PSIzNDQiIHI9IjgiIGZpbGw9IiM0ZThkZjUiLz4KICA8cmVjdCB4PSI1NzkiIHk9IjMzNSIgd2lkdGg9IjEwNiIgaGVpZ2h0PSIxOCIgcng9IjkiIGZpbGw9IiNjOGRhZjgiLz4KICA8dGV4dCB4PSI2MjEiIHk9IjQxOCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImxhYmVsIiBmaWxsPSIjZmZmIj5Mb29uIERIQ1A8L3RleHQ+CiAgPHRleHQgeD0iNjIxIiB5PSI0NTAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJzdWIiIGZpbGw9IiNmZmYiIG9wYWNpdHk9Ii44NiI+5pyJ57q/5Lul5aSq572RPC90ZXh0PgoKICA8cGF0aCBkPSJNIDc2OCAzMTIgSCA4ODgiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzRkODdlZSIgc3Ryb2tlLXdpZHRoPSI2IiBzdHJva2UtbGluZWNhcD0icm91bmQiIG1hcmtlci1lbmQ9InVybCgjYmx1ZUFycm93KSIvPgoKICA8ZyBmaWx0ZXI9InVybCgjc2hhZG93KSI+CiAgICA8cmVjdCB4PSI4ODgiIHk9IjE1NSIgd2lkdGg9IjIzOCIgaGVpZ2h0PSIzMTUiIHJ4PSIyOCIgZmlsbD0iI2ZmZiIvPgogIDwvZz4KICA8dGV4dCB4PSIxMDA3IiB5PSIyMDUiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJsYWJlbCI+5LiL5Y+R5YaF5a65PC90ZXh0PgogIDxnPgogICAgPHJlY3QgeD0iOTI5IiB5PSIyMzYiIHdpZHRoPSIxNTYiIGhlaWdodD0iNDIiIHJ4PSIyMSIgZmlsbD0iI2U2ZWZmZiIvPgogICAgPHRleHQgeD0iMTAwNyIgeT0iMjYzIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iaXRlbSI+SVAg5Zyw5Z2APC90ZXh0PgogICAgPHJlY3QgeD0iOTI5IiB5PSIyOTIiIHdpZHRoPSIxNTYiIGhlaWdodD0iNDIiIHJ4PSIyMSIgZmlsbD0iI2U2ZWZmZiIvPgogICAgPHRleHQgeD0iMTAwNyIgeT0iMzE5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iaXRlbSI+5a2Q572R5o6p56CBPC90ZXh0PgogICAgPHJlY3QgeD0iOTI5IiB5PSIzNDgiIHdpZHRoPSIxNTYiIGhlaWdodD0iNDIiIHJ4PSIyMSIgZmlsbD0iI2U2ZWZmZiIvPgogICAgPHRleHQgeD0iMTAwNyIgeT0iMzc1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iaXRlbSI+6buY6K6k572R5YWzPC90ZXh0PgogICAgPHJlY3QgeD0iOTI5IiB5PSI0MDQiIHdpZHRoPSIxNTYiIGhlaWdodD0iNDIiIHJ4PSIyMSIgZmlsbD0iI2U2ZWZmZiIvPgogICAgPHRleHQgeD0iMTAwNyIgeT0iNDMxIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0iaXRlbSI+RE5TPC90ZXh0PgogIDwvZz4KCiAgPHJlY3QgeD0iMjQwIiB5PSI1MzEiIHdpZHRoPSI3MjAiIGhlaWdodD0iNTQiIHJ4PSIyNyIgZmlsbD0iI2UwZWJmZiIvPgogIDx0ZXh0IHg9IjYwMCIgeT0iNTY2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0ic3ViIj5ESENQIOS4i+WPkSBJUHY077ybSVB2NiDlnLDlnYDjgIHot6/nlLHlkowgRE5TIOmAmui/h+i3r+eUsemAmuWRiuaPkOS+mzwvdGV4dD4KPC9zdmc+Cg==" width="1200" height="620" class="img_ev3q"></p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="开始之前">开始之前<a href="https://loon0x00.github.io/blog/loon4mac-dhcp#%E5%BC%80%E5%A7%8B%E4%B9%8B%E5%89%8D" class="hash-link" aria-label="开始之前的直接链接" title="开始之前的直接链接">​</a></h2>
+<p>DHCP 会影响整个局域网中新接入和续租的设备。启用前请确认：</p>
+<ol>
+<li><strong>Mac 已连接有线以太网。</strong> Loon DHCP 不通过 Wi-Fi 接口提供服务。</li>
+<li><strong>有线接口使用静态 IPv4。</strong> 引导页会检测当前配置，并可将当前地址设置为静态地址。</li>
+<li><strong>局域网中的其他 DHCP 服务器已经关闭。</strong> 家用网络通常由路由器提供 DHCP，需要先在路由器管理页面中关闭。</li>
+<li><strong>Loon VPN 已连接。</strong> DHCP 服务运行在 Loon 网络扩展中。</li>
+<li><strong>Mac 保持开机和清醒。</strong> Mac 睡眠、网线断开或 VPN 停止后，Loon 无法继续响应设备的 DHCP 请求。</li>
+</ol>
+<p>同一局域网中同时运行多个 DHCP 服务器时，设备可能从不同服务器取得相互冲突的配置，造成无法联网或流量没有经过预期网关。Loon 可以检测其他 DHCP 服务器并发出通知；还可以选择在发现其他服务器时自动停止 Loon DHCP。</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="通过引导开启-dhcp">通过引导开启 DHCP<a href="https://loon0x00.github.io/blog/loon4mac-dhcp#%E9%80%9A%E8%BF%87%E5%BC%95%E5%AF%BC%E5%BC%80%E5%90%AF-dhcp" class="hash-link" aria-label="通过引导开启 DHCP的直接链接" title="通过引导开启 DHCP的直接链接">​</a></h2>
+<ol>
+<li>在 Loon4Mac 侧边栏进入 <strong>网关</strong>，选择 <strong>DHCP</strong>。</li>
+<li>打开 <strong>启用 DHCP</strong>，进入首次配置引导。</li>
+<li>选择连接局域网的以太网接口。</li>
+<li>检查接口是否使用静态 IPv4，并确认局域网中没有其他 DHCP 服务器。</li>
+<li>设置地址池、子网掩码、路由地址和 DNS。</li>
+<li>根据需要打开 <strong>随着 VPN 启动</strong>，然后完成配置。</li>
+</ol>
+<p>启用成功后，让设备关闭再打开 Wi-Fi 或重新连接网线。设备会重新请求网络配置，并出现在 Loon 的在线设备列表中。使用 Loon DHCP 的设备会显示 DHCP 标记。</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="配置项说明">配置项说明<a href="https://loon0x00.github.io/blog/loon4mac-dhcp#%E9%85%8D%E7%BD%AE%E9%A1%B9%E8%AF%B4%E6%98%8E" class="hash-link" aria-label="配置项说明的直接链接" title="配置项说明的直接链接">​</a></h2>
+<table><thead><tr><th>配置项</th><th>作用</th></tr></thead><tbody><tr><td>起始地址、结束地址</td><td>Loon 可以分配给设备的 IPv4 地址范围。地址池应与当前局域网处于同一子网，并避开路由器、Mac 和 Loon 网关使用的地址。</td></tr><tr><td>子网掩码</td><td>定义设备所在 IPv4 子网的范围，应与当前局域网配置一致。</td></tr><tr><td>路由地址</td><td>设备未使用 Loon 网关时使用的默认网关，通常填写局域网路由器地址。</td></tr><tr><td>DNS 服务器</td><td>下发给设备的 DNS 地址；未启用 Loon UDP DNS 接管时，设备会直接使用这个地址。</td></tr><tr><td>租约时长</td><td>设备可以使用当前地址的时间。到期前，设备通常会自动续租。</td></tr><tr><td>默认使用 Loon 作为网关</td><td>让设备的网络流量通过 Loon，该项必须保持 Loon 网关开启。</td></tr><tr><td>接管 UDP DNS</td><td>Loon 接管设备的 UDP DNS，该项必须保持 Loon 网关开启。</td></tr><tr><td>发现其他 DHCP 时停止</td><td>运行中发现另一个 DHCP 服务器后，停止 Loon DHCP 并发出通知。</td></tr><tr><td>随着 VPN 启动</td><td>每次 Loon VPN 启动后，按当前配置自动启动 DHCP。</td></tr></tbody></table>
+<p>修改这些配置后，新接入设备和发起续租的设备会使用当前配置。Loon 会尽量为已有设备保留原来的 IP；未设置固定 IP 时，该地址在必要时仍可以分配给其他设备。</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="配合-loon-网��关使用">配合 Loon 网关使用<a href="https://loon0x00.github.io/blog/loon4mac-dhcp#%E9%85%8D%E5%90%88-loon-%E7%BD%91%E5%85%B3%E4%BD%BF%E7%94%A8" class="hash-link" aria-label="配合 Loon 网关使用的直接链接" title="配合 Loon 网关使用的直接链接">​</a></h2>
+<p>DHCP 和网关是两个独立功能，可以分别开启：</p>
+<ul>
+<li>只开启 DHCP 时，Loon 可以分配地址，设备仍可使用局域网路由器作为默认网关。</li>
+<li>同时开启 DHCP 和网关时，可以让全部设备或指定设备通过 Loon。</li>
+<li>“默认使用 Loon 作为网关”和“接管 UDP DNS”只修改后续下发的配置，不会立即改变设备当前已经取得的租约。设备需要重新接入网络或完成续租后才会应用。</li>
+</ul>
+<p>如果为某个设备选择 <strong>使用 Loon 网关</strong>，且其 UDP DNS 策略仍为“跟随 DHCP 默认配置”，Loon 会同时为该设备启用 UDP DNS 接管并下发 Loon DNS。这样可以让域名规则正常工作。</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="单独管理设备">单独管理设备<a href="https://loon0x00.github.io/blog/loon4mac-dhcp#%E5%8D%95%E7%8B%AC%E7%AE%A1%E7%90%86%E8%AE%BE%E5%A4%87" class="hash-link" aria-label="单独管理设备的直接链接" title="单独管理设备的直接链接">​</a></h2>
+<p>在设备列表中右键设备，可以设置：</p>
+<ul>
+<li><strong>网关策略：</strong> 跟随 DHCP 默认配置、使用 Loon 网关或使用局域网网关。</li>
+<li><strong>UDP DNS 策略：</strong> 跟随 DHCP 默认配置、由 Loon 接管或不接管。</li>
+<li><strong>IP 管理：</strong> 使用自动 IP，或在地址池范围内为设备保留固定 IP。</li>
+</ul>
+<p>策略按设备 MAC 地址保存，下次接入时继续生效。修改后需要让设备断开并重新加入局域网，或等待设备发起 DHCP 续租。</p>
+<p>DHCP 页面还提供只读租约列表和地址保留管理。设备续租时，Loon 会优先继续分配原地址；设置固定 IP 后，该地址不会再分配给其他设备。</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="dhcp-与-ipv6">DHCP 与 IPv6<a href="https://loon0x00.github.io/blog/loon4mac-dhcp#dhcp-%E4%B8%8E-ipv6" class="hash-link" aria-label="DHCP 与 IPv6的直接链接" title="DHCP 与 IPv6的直接链接">​</a></h2>
+<p>Loon DHCP 当前提供的是 <strong>DHCPv4</strong>，地址池、子网掩码、路由地址和固定 IP 等配置都只针对 IPv4。Loon 不提供 DHCPv6，但这并不代表接入设备无法使用 IPv6。</p>
+<p>设备的 IPv6 配置不通过 DHCPv6 下发，而是使用 <strong>IPv6 RA（Router Advertisement，路由通告）</strong>：</p>
+<ul>
+<li><strong>设备使用局域网网关：</strong> IPv4 配置可以由 Loon DHCP 下发，IPv6 地址、路由和 DNS 继续由原有路由器提供。</li>
+<li><strong>设备使用 Loon 网关：</strong> Loon IPv6 网关会在检测到可用 <code>/64</code> 前缀后，向该设备发送 IPv6 RA，提供 IPv6 路由和 Loon IPv6 DNS <code>fd27:712::3</code>。</li>
+<li><strong>只开启 Loon DHCP，没有开启 Loon 网关：</strong> 设备仍可以从原有路由器取得 IPv6，但 IPv6 流量不会由 Loon 网关接管。</li>
+</ul>
+<p>切换设备的网关或 UDP DNS 策略后，需要让设备重新接入网络。DHCP 续租负责更新 IPv4 配置；IPv6 路由和 DNS 则通过新的 IPv6 RA 更新。</p>
+<p>如果上游网络没有提供可用的 IPv6 <code>/64</code> 前缀，设备仍可正常使用 Loon 分配的 IPv4 配置。Loon 不会为了缺少 IPv6 而停止 DHCPv4 服务。</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="关闭-dhcp-会有什么影响">关闭 DHCP 会有什么影响<a href="https://loon0x00.github.io/blog/loon4mac-dhcp#%E5%85%B3%E9%97%AD-dhcp-%E4%BC%9A%E6%9C%89%E4%BB%80%E4%B9%88%E5%BD%B1%E5%93%8D" class="hash-link" aria-label="关闭 DHCP 会有什么影响的直接链接" title="关闭 DHCP 会有什么影响的直接链接">​</a></h2>
+<ul>
+<li>手动设置静态 IP 的设备不会受到 DHCP 关闭的直接影响。</li>
+<li>已取得租约的设备通常会在租约有效期内继续使用现有配置。</li>
+<li>设备重新接入或租约需要续期时，如果局域网中没有其他 DHCP 服务器，就无法自动取得新的网络配置。</li>
+<li>如果准备恢复路由器 DHCP，先确认它的地址池不会与 Loon 的固定地址和现有设备地址冲突，再让设备重新接入网络。</li>
+</ul>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="简单了解技术方案">简单了解技术方案<a href="https://loon0x00.github.io/blog/loon4mac-dhcp#%E7%AE%80%E5%8D%95%E4%BA%86%E8%A7%A3%E6%8A%80%E6%9C%AF%E6%96%B9%E6%A1%88" class="hash-link" aria-label="简单了解技术方案的直接链接" title="简单了解技术方案的直接链接">​</a></h2>
+<p>Loon DHCP 运行在 Loon 的 macOS 网络扩展中，通过选中的有线接口接收设备的 DHCP 请求，再返回 IP、网关、DNS 和租约时长等配置。</p>
+<p>租约和设备策略保存在独立数据库中，因此 Loon 重启后仍能识别已有设备，并尽量继续使用之前的地址。新设备和续租设备都会按当前 DHCP 配置生成响应。</p>
+<p>当前 DHCP 服务提供 IPv4 地址分配，不提供 DHCPv6。IPv6 使用独立的 RA 流程，因此不会影响 Loon DHCP 对 IPv4 租约的管理。</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="常见问题">常见问题<a href="https://loon0x00.github.io/blog/loon4mac-dhcp#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98" class="hash-link" aria-label="常见问题的直接链接" title="常见问题的直接链接">​</a></h2>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="设备仍然拿到路由器分配的地址">设备仍然拿到路由器分配的地址<a href="https://loon0x00.github.io/blog/loon4mac-dhcp#%E8%AE%BE%E5%A4%87%E4%BB%8D%E7%84%B6%E6%8B%BF%E5%88%B0%E8%B7%AF%E7%94%B1%E5%99%A8%E5%88%86%E9%85%8D%E7%9A%84%E5%9C%B0%E5%9D%80" class="hash-link" aria-label="设备仍然拿到路由器分配的地址的直接链接" title="设备仍然拿到路由器分配的地址的直接链接">​</a></h3>
+<p>局域网中很可能仍有另一个 DHCP 服务器。关闭路由器或其他设备上的 DHCP 服务，然后让客户端重新连接网络。也可以查看 Loon 的 DHCP 通知和运行状态。</p>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="修改配置后设备没有变化">修改配置后设备没有变化<a href="https://loon0x00.github.io/blog/loon4mac-dhcp#%E4%BF%AE%E6%94%B9%E9%85%8D%E7%BD%AE%E5%90%8E%E8%AE%BE%E5%A4%87%E6%B2%A1%E6%9C%89%E5%8F%98%E5%8C%96" class="hash-link" aria-label="修改配置后设备没有变化的直接链接" title="修改配置后设备没有变化的直接链接">​</a></h3>
+<p>DHCP 配置在设备下一次接入或续租时生效。断开设备网络后重新连接，通常可以立即取得新配置。</p>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="dhcp-正在运行但设备不能访问网络">DHCP 正在运行，但设备不能访问网络<a href="https://loon0x00.github.io/blog/loon4mac-dhcp#dhcp-%E6%AD%A3%E5%9C%A8%E8%BF%90%E8%A1%8C%E4%BD%86%E8%AE%BE%E5%A4%87%E4%B8%8D%E8%83%BD%E8%AE%BF%E9%97%AE%E7%BD%91%E7%BB%9C" class="hash-link" aria-label="DHCP 正在运行，但设备不能访问网络的直接链接" title="DHCP 正在运行，但设备不能访问网络的直接链接">​</a></h3>
+<p>检查地址池和子网掩码是否属于当前局域网。如果设备使用局域网网关，检查“路由地址”是否填写正确；如果设备使用 Loon 网关，检查 Loon 网关是否正在运行，并确认 DNS 策略与网关策略匹配。</p>]]></content>
+        <author>
+            <name>Loon0x00</name>
+            <uri>https://github.com/Loon0x00</uri>
+        </author>
+        <category label="Loon4Mac" term="Loon4Mac"/>
+        <category label="DHCP" term="DHCP"/>
+        <category label="macOS" term="macOS"/>
+    </entry>
+    <entry>
+        <title type="html"><![CDATA[Loon4Mac 局域网网关指南]]></title>
+        <id>https://loon0x00.github.io/blog/loon4mac-gateway</id>
+        <link href="https://loon0x00.github.io/blog/loon4mac-gateway"/>
+        <updated>2026-10-20T01:00:00.000Z</updated>
+        <summary type="html"><![CDATA[介绍 Loon4Mac 网关的使用条件、开启方法、设备接入方式、DNS 选择和支持的功能。]]></summary>
+        <content type="html"><![CDATA[<p>Loon4Mac（build 1007+） 的网关功能可以让同一局域网内的手机、平板、电脑和其他设备通过 Mac 上的 Loon 访问网络。接入设备不需要安装 Loon，只要把默认网关指向 Loon 提供的网关地址，就能使用 Loon 的分流规则、策略和代理节点。</p>
+<p><img decoding="async" loading="lazy" alt="Loon4Mac 网关工作方式" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjAwIDYyMCIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsbGVkYnk9InRpdGxlIGRlc2MiPgogIDx0aXRsZSBpZD0idGl0bGUiPkxvb240TWFjIOe9keWFs+aLk+aJkTwvdGl0bGU+CiAgPGRlc2MgaWQ9ImRlc2MiPuWxgOWfn+e9keiuvuWkh+mAmui/h+aciee6v+e9kee7nOi/nuaOpei/kOihjCBMb29uIOeahCBNYWPvvIzlho3nlLEgTG9vbiDop4TliJnkuI7ku6PnkIborr/pl67kupLogZTnvZHjgII8L2Rlc2M+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCIgc3RvcC1jb2xvcj0iI2Y3ZmFmZiIvPgogICAgICA8c3RvcCBvZmZzZXQ9IjEiIHN0b3AtY29sb3I9IiNlZWY0ZmYiLz4KICAgIDwvbGluZWFyR3JhZGllbnQ+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9Imxvb24iIHgxPSIwIiB5MT0iMCIgeDI9IjEiIHkyPSIxIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwIiBzdG9wLWNvbG9yPSIjNTU5NmZmIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMSIgc3RvcC1jb2xvcj0iIzJkNmRlOCIvPgogICAgPC9saW5lYXJHcmFkaWVudD4KICAgIDxmaWx0ZXIgaWQ9InNoYWRvdyIgeD0iLTIwJSIgeT0iLTIwJSIgd2lkdGg9IjE0MCUiIGhlaWdodD0iMTQwJSI+CiAgICAgIDxmZURyb3BTaGFkb3cgZHg9IjAiIGR5PSIxMCIgc3RkRGV2aWF0aW9uPSIxNSIgZmxvb2QtY29sb3I9IiMxNzM2NmMiIGZsb29kLW9wYWNpdHk9Ii4xMiIvPgogICAgPC9maWx0ZXI+CiAgICA8bWFya2VyIGlkPSJhcnJvdyIgdmlld0JveD0iMCAwIDEwIDEwIiByZWZYPSI5IiByZWZZPSI1IiBtYXJrZXJXaWR0aD0iOCIgbWFya2VySGVpZ2h0PSI4IiBvcmllbnQ9ImF1dG8tc3RhcnQtcmV2ZXJzZSI+CiAgICAgIDxwYXRoIGQ9Ik0gMCAwIEwgMTAgNSBMIDAgMTAgeiIgZmlsbD0iIzRiODZlZCIvPgogICAgPC9tYXJrZXI+CiAgICA8c3R5bGU+CiAgICAgIHRleHQgeyBmb250LWZhbWlseTogLWFwcGxlLXN5c3RlbSwgQmxpbmtNYWNTeXN0ZW1Gb250LCAiUGluZ0ZhbmcgU0MiLCAiTWljcm9zb2Z0IFlhSGVpIiwgc2Fucy1zZXJpZjsgfQogICAgICAudGl0bGUgeyBmb250LXNpemU6IDMwcHg7IGZvbnQtd2VpZ2h0OiA3MDA7IGZpbGw6ICMxNzI0M2I7IH0KICAgICAgLmxhYmVsIHsgZm9udC1zaXplOiAyMnB4OyBmb250LXdlaWdodDogNjUwOyBmaWxsOiAjMjAzMDRjOyB9CiAgICAgIC5zdWIgeyBmb250LXNpemU6IDE4cHg7IGZpbGw6ICM2ODc5OTU7IH0KICAgICAgLndoaXRlIHsgZmlsbDogI2ZmZjsgfQogICAgPC9zdHlsZT4KICA8L2RlZnM+CiAgPHJlY3Qgd2lkdGg9IjEyMDAiIGhlaWdodD0iNjIwIiByeD0iMzIiIGZpbGw9InVybCgjYmcpIi8+CiAgPHRleHQgeD0iNjAwIiB5PSI2MiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9InRpdGxlIj7lsYDln5/nvZHorr7lpIfpgJrov4cgTG9vbjRNYWMg6K6/6Zeu572R57ucPC90ZXh0PgoKICA8cGF0aCBkPSJNIDMzNyAzMTAgSCA0NzgiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzRiODZlZCIgc3Ryb2tlLXdpZHRoPSI3IiBzdHJva2UtbGluZWNhcD0icm91bmQiIG1hcmtlci1lbmQ9InVybCgjYXJyb3cpIi8+CiAgPHBhdGggZD0iTSA3MjIgMzEwIEggODYzIiBmaWxsPSJub25lIiBzdHJva2U9IiM0Yjg2ZWQiIHN0cm9rZS13aWR0aD0iNyIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBtYXJrZXItZW5kPSJ1cmwoI2Fycm93KSIvPgogIDx0ZXh0IHg9IjQwOCIgeT0iMjg1IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0ic3ViIj5JUHY0IC8gSVB2NjwvdGV4dD4KICA8dGV4dCB4PSI3OTIiIHk9IjI4NSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9InN1YiI+6KeE5YiZ5LiO5Luj55CGPC90ZXh0PgoKICA8ZyBmaWx0ZXI9InVybCgjc2hhZG93KSI+CiAgICA8cmVjdCB4PSI3MiIgeT0iMTUxIiB3aWR0aD0iMjY1IiBoZWlnaHQ9IjMxOCIgcng9IjI4IiBmaWxsPSIjZmZmIi8+CiAgPC9nPgogIDxyZWN0IHg9IjEwOCIgeT0iMTk0IiB3aWR0aD0iODYiIGhlaWdodD0iMTM4IiByeD0iMTciIGZpbGw9IiNkYmU3ZmIiIHN0cm9rZT0iIzhjYTlkNiIgc3Ryb2tlLXdpZHRoPSI0Ii8+CiAgPHJlY3QgeD0iMTI0IiB5PSIyMTAiIHdpZHRoPSI1NCIgaGVpZ2h0PSI5MSIgcng9IjgiIGZpbGw9IiNmZmYiLz4KICA8Y2lyY2xlIGN4PSIxNTEiIGN5PSIzMTUiIHI9IjYiIGZpbGw9IiM4Y2E5ZDYiLz4KICA8cmVjdCB4PSIyMTEiIHk9IjIxNSIgd2lkdGg9Ijg5IiBoZWlnaHQ9IjY2IiByeD0iMTAiIGZpbGw9IiNkYmU3ZmIiIHN0cm9rZT0iIzhjYTlkNiIgc3Ryb2tlLXdpZHRoPSI0Ii8+CiAgPHBhdGggZD0iTSAxOTcgMzAwIEggMzE0IEwgMjk2IDMyNiBIIDIxNSBaIiBmaWxsPSIjYjhjYmVhIi8+CiAgPHRleHQgeD0iMjA0IiB5PSIzODAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJsYWJlbCI+5o6l5YWl6K6+5aSHPC90ZXh0PgogIDx0ZXh0IHg9IjIwNCIgeT0iNDE2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0ic3ViIj7miYvmnLogwrcg55S16ISRIMK3IOeUteinhjwvdGV4dD4KCiAgPGcgZmlsdGVyPSJ1cmwoI3NoYWRvdykiPgogICAgPHJlY3QgeD0iNDc4IiB5PSIxMzMiIHdpZHRoPSIyNDQiIGhlaWdodD0iMzU0IiByeD0iMzIiIGZpbGw9InVybCgjbG9vbikiLz4KICA8L2c+CiAgPHJlY3QgeD0iNTI1IiB5PSIxODciIHdpZHRoPSIxNTAiIGhlaWdodD0iMTAxIiByeD0iMTQiIGZpbGw9IiNkY2U5ZmYiLz4KICA8cmVjdCB4PSI1NDMiIHk9IjIwNSIgd2lkdGg9IjExNCIgaGVpZ2h0PSI2NSIgcng9IjYiIGZpbGw9IiNmZmYiLz4KICA8cGF0aCBkPSJNIDUwNiAzMDkgSCA2OTQgTCA2NzAgMzMzIEggNTMwIFoiIGZpbGw9IiNjNmQ5ZmIiLz4KICA8Y2lyY2xlIGN4PSI2MDAiIGN5PSIzNzQiIHI9IjI3IiBmaWxsPSIjZmZmIiBmaWxsLW9wYWNpdHk9Ii4xOCIvPgogIDxwYXRoIGQ9Ik0gNTg4IDM3NCBIIDYxMiBNIDYwMCAzNjIgViAzODYiIHN0cm9rZT0iI2ZmZiIgc3Ryb2tlLXdpZHRoPSI2IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8dGV4dCB4PSI2MDAiIHk9IjQzMSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImxhYmVsIHdoaXRlIj5Mb29uNE1hYyDnvZHlhbM8L3RleHQ+CiAgPHRleHQgeD0iNjAwIiB5PSI0NjEiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJzdWIgd2hpdGUiIG9wYWNpdHk9Ii44NiI+VlBOIOe9kee7nOaJqeWxlTwvdGV4dD4KCiAgPGcgZmlsdGVyPSJ1cmwoI3NoYWRvdykiPgogICAgPHJlY3QgeD0iODYzIiB5PSIxNTEiIHdpZHRoPSIyNjUiIGhlaWdodD0iMzE4IiByeD0iMjgiIGZpbGw9IiNmZmYiLz4KICA8L2c+CiAgPHBhdGggZD0iTSA5MzEgMjgyIEMgOTE1IDIzNyA5NTQgMTk5IDk5NyAyMTkgQyAxMDIxIDE4MCAxMDgyIDE5OCAxMDgwIDI0NCBDIDExMjEgMjUzIDExMjMgMzE2IDEwNzkgMzI1IEggOTQ3IEMgOTA0IDMyNCA4OTggMjk0IDkzMSAyODIgWiIgZmlsbD0iI2RiZTdmYiIgc3Ryb2tlPSIjOGNhOWQ2IiBzdHJva2Utd2lkdGg9IjQiLz4KICA8cGF0aCBkPSJNIDk3OSAyNzQgSCAxMDUxIE0gMTAxNSAyMzggViAzMTAiIHN0cm9rZT0iIzVkODZjNyIgc3Ryb2tlLXdpZHRoPSI3IiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KICA8dGV4dCB4PSI5OTUiIHk9IjM4MCIgdGV4dC1hbmNob3I9Im1pZGRsZSIgY2xhc3M9ImxhYmVsIj7kupLogZTnvZE8L3RleHQ+CiAgPHRleHQgeD0iOTk1IiB5PSI0MTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGNsYXNzPSJzdWIiPuebtOi/nuaIluS7o+eQhuiKgueCuTwvdGV4dD4KCiAgPHJlY3QgeD0iMzQ0IiB5PSI1MjYiIHdpZHRoPSI1MTIiIGhlaWdodD0iNTQiIHJ4PSIyNyIgZmlsbD0iI2UwZWJmZiIvPgogIDx0ZXh0IHg9IjYwMCIgeT0iNTYxIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBjbGFzcz0ic3ViIj7lj6rmnInlsIbpu5jorqTnvZHlhbPmjIflkJEgTG9vbiDnmoTorr7lpIfkvJrnu4/ov4fov5nmnaHot6/lvoQ8L3RleHQ+Cjwvc3ZnPgoK" width="1200" height="620" class="img_ev3q"></p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="适合哪些场景">适合哪些场景<a href="https://loon0x00.github.io/blog/loon4mac-gateway#%E9%80%82%E5%90%88%E5%93%AA%E4%BA%9B%E5%9C%BA%E6%99%AF" class="hash-link" aria-label="适合哪些场景的直接链接" title="适合哪些场景的直接链接">​</a></h2>
+<ul>
+<li>临时让手机、电视、游戏机或另一台电脑使用 Loon。</li>
+<li>接入设备无法安装代理软件，但支持修改 IP、网关和 DNS。</li>
+<li>希望在 Mac 上集中查看设备状态、请求数量和流量。</li>
+<li>配合 Loon DHCP，自动给不同设备下发网关和 DNS 策略。</li>
+</ul>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="开始之前">开始之前<a href="https://loon0x00.github.io/blog/loon4mac-gateway#%E5%BC%80%E5%A7%8B%E4%B9%8B%E5%89%8D" class="hash-link" aria-label="开始之前的直接链接" title="开始之前的直接链接">​</a></h2>
+<p>使用网关前，请先确认以下条件：</p>
+<ol>
+<li><strong>Mac 已连接有线以太网。</strong> 当前网关通过有线接口接入局域网，暂不支持使用 Wi-Fi 接口提供网关服务。</li>
+<li><strong>Loon VPN 已连接。</strong> 网关运行在 Loon 的网络扩展中，VPN 未连接时无法转发设备流量。</li>
+<li><strong>Mac 不会在使用期间进入睡眠。</strong> Mac 睡眠、网线断开或 VPN 停止后，正在使用 Loon 网关的设备会失去网络连接。</li>
+<li><strong>网关 IP 没有被其他设备占用。</strong> 自动配置会选择可用接口和地址；手动填写时，应使用当前局域网网段内尚未占用的地址。</li>
+<li><strong>没有同时使用其他虚拟机软件的桥接模式。</strong> Loon 网关使用 VM 桥接模式，无法与 Parallels Desktop、VMware Fusion 等虚拟机软件的桥接模式同时运行。</li>
+</ol>
+<p>建议让 Mac 的有线接口长期使用一个稳定的 IPv4 地址。仅使用网关时这不是强制要求；如果还要启用 Loon DHCP，则有线接口必须使用静态 IPv4。</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="开启网关">开启网关<a href="https://loon0x00.github.io/blog/loon4mac-gateway#%E5%BC%80%E5%90%AF%E7%BD%91%E5%85%B3" class="hash-link" aria-label="开启网关的直接链接" title="开启网关的直接链接">​</a></h2>
+<ol>
+<li>将 Mac 接入有线局域网并连接 Loon VPN。</li>
+<li>在 Loon4Mac 侧边栏进入 <strong>网关</strong>，选择 <strong>网关配置</strong>。</li>
+<li>选择用于接入局域网的以太网接口。</li>
+<li>使用自动配置，或填写一个未被占用的网关 IP。</li>
+<li>打开 <strong>启动网关</strong>。</li>
+</ol>
+<p>如果希望每次连接 Loon VPN 后自动恢复网关，可以打开 <strong>随着 VPN 启动</strong>。这个选项只决定启动行为；页面上的“启动网关”开关显示并控制当前运行状态。</p>
+<p>当接口不可用、地址冲突或配置不完整时，页面会显示启动失败原因。由网线断开、接口暂时消失等情况造成的中断，在接口恢复且满足启动条件后，Loon 会尝试恢复网关。</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="让设备接入">让设备接入<a href="https://loon0x00.github.io/blog/loon4mac-gateway#%E8%AE%A9%E8%AE%BE%E5%A4%87%E6%8E%A5%E5%85%A5" class="hash-link" aria-label="让设备接入的直接链接" title="让设备接入的直接链接">​</a></h2>
+<p>有两种方式可以让设备使用 Loon 网关。</p>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="手动配置">手动配置<a href="https://loon0x00.github.io/blog/loon4mac-gateway#%E6%89%8B%E5%8A%A8%E9%85%8D%E7%BD%AE" class="hash-link" aria-label="手动配置的直接链接" title="手动配置的直接链接">​</a></h3>
+<p>在设备的网络设置中保留当前网段，按下面的方式填写：</p>
+<ul>
+<li><strong>IP 地址：</strong> 当前局域网中未被占用的地址。</li>
+<li><strong>子网掩码：</strong> 与局域网现有配置一致。</li>
+<li><strong>路由器或默认网关：</strong> Loon 网关页面显示的网关 IP。</li>
+<li><strong>DNS：</strong> 根据下面的 DNS 说明选择。</li>
+</ul>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="使用-loon-dhcp">使用 Loon DHCP<a href="https://loon0x00.github.io/blog/loon4mac-gateway#%E4%BD%BF%E7%94%A8-loon-dhcp" class="hash-link" aria-label="使用 Loon DHCP的直接链接" title="使用 Loon DHCP的直接链接">​</a></h3>
+<p>启用 Loon DHCP 后，可以由 Loon 自动下发 IP、网关和 DNS。DHCP 支持全局默认配置，也可以为单个设备指定使用 Loon 网关、接管 UDP DNS 或保留固定 IP。详细步骤请参阅 <a href="https://loon0x00.github.io/blog/loon4mac-dhcp">使用 Loon4Mac 提供 DHCP 服务</a>。</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="dns-应该怎么设置">DNS 应该怎么设置<a href="https://loon0x00.github.io/blog/loon4mac-gateway#dns-%E5%BA%94%E8%AF%A5%E6%80%8E%E4%B9%88%E8%AE%BE%E7%BD%AE" class="hash-link" aria-label="DNS 应该怎么设置的直接链接" title="DNS 应该怎么设置的直接链接">​</a></h2>
+<p>DNS 会影响域名请求是否能完整使用 Loon 的规则和 Fake-IP 能力。</p>
+<table><thead><tr><th>DNS 设置</th><th>数据路径和适用情况</th></tr></thead><tbody><tr><td><code>198.19.0.3</code></td><td>使用 Loon 的 Fake-IP DNS，适合需要按域名规则分流的设备。</td></tr><tr><td>路由器 DNS，例如 <code>192.168.2.1</code></td><td>DNS 通常由路由器处理；未开启 UDP DNS 接管时，Loon 可能无法获得完整的域名信息。</td></tr><tr><td>公共 DNS，例如 <code>223.5.5.5</code></td><td>DNS 请求直接发往公共 DNS；未开启 UDP DNS 接管时，不会使用 Loon 的 Fake-IP DNS。</td></tr></tbody></table>
+<p>如果设备已经使用 Loon 网关，推荐同时让 Loon 接管 UDP DNS。使用 Loon DHCP 时，可以在默认配置或单设备策略中完成设置。</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="支持的功能">支持的功能<a href="https://loon0x00.github.io/blog/loon4mac-gateway#%E6%94%AF%E6%8C%81%E7%9A%84%E5%8A%9F%E8%83%BD" class="hash-link" aria-label="支持的功能的直接链接" title="支持的功能的直接链接">​</a></h2>
+<ul>
+<li>IPv4 网关转发和 Loon 规则、策略、节点处理。</li>
+<li>IPv6 TCP、UDP 和 ICMPv6 转发，以及 Loon IPv6 DNS。</li>
+<li>在线与离线设备列表，以及设备名称、IP、MAC 地址和设备图标。</li>
+<li>单设备请求数量、当前连接数、上传流量和下载流量统计。</li>
+<li>设备连接历史和流量记录。</li>
+<li>配合 Loon DHCP 设置单设备网关策略、UDP DNS 策略和固定 IP。</li>
+<li>网关启动失败、运行中断和设备接入等通知。</li>
+</ul>
+<p>设备名称和类型来自设备主动提供的信息及局域网发现结果。部分设备不会公开完整名称，因此可能显示通用名称或未知设备图标。</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="ipv6-网关">IPv6 网关<a href="https://loon0x00.github.io/blog/loon4mac-gateway#ipv6-%E7%BD%91%E5%85%B3" class="hash-link" aria-label="IPv6 网关的直接链接" title="IPv6 网关的直接链接">​</a></h2>
+<p>IPv6 网关会随 Loon 网关自动工作，不需要单独开启。只要有线网络提供可用的 IPv6 <code>/64</code> 前缀，使用 Loon 网关的设备就能自动取得 IPv6 路由和 DNS，IPv6 流量也会使用 Loon 的规则、策略和代理节点。</p>
+<p>客户端通常不需要手动配置 IPv6。开启网关后重新连接网络即可；如果当前网络不支持 IPv6，IPv4 网关仍可正常使用。Loon DHCP 只负责 IPv4 配置，不提供 DHCPv6。</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="简单了解技术方案">简单了解技术方案<a href="https://loon0x00.github.io/blog/loon4mac-gateway#%E7%AE%80%E5%8D%95%E4%BA%86%E8%A7%A3%E6%8A%80%E6%9C%AF%E6%96%B9%E6%A1%88" class="hash-link" aria-label="简单了解技术方案的直接链接" title="简单了解技术方案的直接链接">​</a></h2>
+<p>Loon4Mac 使用 macOS 的 VMNET 能力，把选中的以太网接口接入 Loon 网络扩展。IPv4 设备通过 ARP 找到 Loon 网关；IPv6 设备通过路由通告和邻居发现找到 Loon。设备将数据发送给 Loon 网关后，流量进入 Loon 原有的规则和代理处理流程，再由 Mac 转发到目标网络。</p>
+<p>只有把默认网关指向 Loon 的设备才会经过这条路径。局域网内其他设备以及设备之间的普通本地通信不会因为开启网关而自动改道。</p>
+<h2 class="anchor anchorWithStickyNavbar_LWe7" id="常见问题">常见问题<a href="https://loon0x00.github.io/blog/loon4mac-gateway#%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98" class="hash-link" aria-label="常见问题的直接链接" title="常见问题的直接链接">​</a></h2>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="开启后设备没有网络">开启后设备没有网络<a href="https://loon0x00.github.io/blog/loon4mac-gateway#%E5%BC%80%E5%90%AF%E5%90%8E%E8%AE%BE%E5%A4%87%E6%B2%A1%E6%9C%89%E7%BD%91%E7%BB%9C" class="hash-link" aria-label="开启后设备没有网络的直接链接" title="开启后设备没有网络的直接链接">​</a></h3>
+<p>依次检查 Loon VPN 是否已连接、Mac 是否仍连接网线、设备默认网关是否填写为 Loon 网关 IP，以及该 IP 是否与其他设备冲突。若能访问 IP 地址但不能打开域名，再检查设备的 DNS 设置。</p>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="可以通过-wi-fi-提供网关吗">可以通过 Wi-Fi 提供网关吗<a href="https://loon0x00.github.io/blog/loon4mac-gateway#%E5%8F%AF%E4%BB%A5%E9%80%9A%E8%BF%87-wi-fi-%E6%8F%90%E4%BE%9B%E7%BD%91%E5%85%B3%E5%90%97" class="hash-link" aria-label="可以通过 Wi-Fi 提供网关吗的直接链接" title="可以通过 Wi-Fi 提供网关吗的直接链接">​</a></h3>
+<p>当前版本要求使用有线以太网接口。Mac 自己可以同时连接 Wi-Fi，但不能选择 Wi-Fi 接口作为 Loon 网关的局域网接入口。</p>
+<h3 class="anchor anchorWithStickyNavbar_LWe7" id="关闭网关会发生什么">关闭网关会发生什么<a href="https://loon0x00.github.io/blog/loon4mac-gateway#%E5%85%B3%E9%97%AD%E7%BD%91%E5%85%B3%E4%BC%9A%E5%8F%91%E7%94%9F%E4%BB%80%E4%B9%88" class="hash-link" aria-label="关闭网关会发生什么的直接链接" title="关闭网关会发生什么的直接链接">​</a></h3>
+<p>正在使用 Loon 网关的设备会立即失去这条转发路径。把设备的默认网关改回局域网路由器，或让设备重新从其他 DHCP 服务器获取配置后，即可恢复普通局域网连接。</p>]]></content>
+        <author>
+            <name>Loon0x00</name>
+            <uri>https://github.com/Loon0x00</uri>
+        </author>
+        <category label="Loon4Mac" term="Loon4Mac"/>
+        <category label="网关" term="网关"/>
+        <category label="macOS" term="macOS"/>
     </entry>
 </feed>

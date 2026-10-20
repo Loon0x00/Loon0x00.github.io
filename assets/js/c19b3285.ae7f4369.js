@@ -1,0 +1,1 @@
+"use strict";(self.webpackChunkmy_website=self.webpackChunkmy_website||[]).push([[5192],{7389:e=>{e.exports=JSON.parse('{"label":"DHCP","permalink":"/blog/tags/dhcp","allTagsPath":"/blog/tags","count":1,"unlisted":false}')}}]);
