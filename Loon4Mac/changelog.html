@@ -191,13 +191,17 @@
       <h1>更新日志</h1>
       <p class="intro">查看 Loon for Mac 的功能更新、体验优化与问题修复。最新版本始终排列在最前。</p>
       <div class="summary" aria-label="版本统计">
-        <span>26 个历史版本</span>
-        <span>最新版本 0.4.0 (991)</span>
+        <span>27 个历史版本</span>
+        <span>最新版本 0.5.0 (1009)</span>
       </div>
     </header>
 
     <section class="releases" aria-label="版本列表">
       <!-- 发布新版本时，请将新的 article 插在这里，并同步更新上方版本统计。 -->
+      <article id="build-1009">
+        <div class="release-head"><div><h2>0.5.0 alpha</h2><time datetime="2026-10-21">2026 年 10 月 21 日</time></div><span class="build">Build 1009</span></div>
+        <ul><li>新增网关功能，具体功能和教程见：https://nsloon.app/blog/loon4mac-gateway</li><li>新增 DHCP 功能，具体功能和教程见：https://nsloon.app/blog/loon4mac-dhcp</li><li>优化进程规则，加入更多匹配方式，具体见：https://nsloon.app/docs/Rule/process_rule</li><li>性能优化，最新版本在m1 max macbook 上的回环测试为：单流上传12G，单流下载 14G，具体测试结果和测试方式见：https://nsloon.app/blog/loon4mac-tcp-performance</li><li>优化首页布局显示</li><li>合并最新版 iOS 功能</li></ul>
+      </article>
       <article id="build-991">
         <div class="release-head"><div><h2>0.4.0 alpha</h2><time datetime="2026-09-16">2026 年 9 月 16 日</time></div><span class="build">Build 991</span></div>
         <ul><li>macOS 构建号与 iOS 统一至 991，资源下载 User-Agent 新增 Platform/macOS 标识，提升订阅兼容性。</li><li>新增 $dns.query、Gzip 和 AES 加解密脚本 API，完善自定义代理协议支持。</li><li>优化插件、脚本、复写、规则及外部资源的更新状态和错误提示。</li><li>改进仪表页面的搜索输入、窗口缩放及请求、DNS、脚本页面布局。</li><li>菜单栏新增“打开仪表”入口，本地规则支持查看配置详情及删除。</li><li>添加节点页面新增 TLS 指纹选项，修复长文本输入及订阅筛选器布局问题。</li><li>优化策略组、节点延迟等界面交互，统一部分页面的 UI 风格。</li><li>修复 DoH 网络切换、HTTP/2 降级、QUIC 回退、DNS 响应及 IP 规则缓存等问题。</li></ul><ul><li>Loon for iOS 的 User-Agent：Loon/991 CFNetwork/3896.100.1.1.1 Darwin/27.0.0</li><li>Loon for macOS 的 User-Agent：Loon/991 CFNetwork/3896.100.1.1.1 Darwin/27.0.0 Platform/macOS</li></ul>
