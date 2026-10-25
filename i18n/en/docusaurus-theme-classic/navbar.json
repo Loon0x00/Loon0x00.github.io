@@ -46,5 +46,9 @@
   "item.label.插件转换器": {
     "message": "Plugin Converter",
     "description": "Navbar item with label 插件转换器"
+  },
+  "item.label.插件加密工具": {
+    "message": "Plugin Encryptor",
+    "description": "Navbar item with label 插件加密工具"
   }
 }

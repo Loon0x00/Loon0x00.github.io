@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "optionsHash": "0c84c87d9550a01f03a2aa37bf27cf1438a3efc94c34d31b830c31e7e20b2c93",
+  "sourceHash": "2a959e14541b6f9c2051b046f959c696da4b320d2d92b54fe56dd3031fbca668",
+  "outputs": {
+    "pluginEncryption.mjs": "6bab418c7a4e25797ace781020161e3920d6b757f8d9b29972a13ee1de13b86b",
+    "pluginUrlImport.mjs": "07d3cd0760e1c8c94217d509fb968e3888193138e02c7342fedada9557c01502",
+    "pluginEncryptionWorker.mjs": "2370791a7cc038bc56567aec5a37d2f44afeff7f9e29454c5e6fd24f96924c8a"
+  }
+}

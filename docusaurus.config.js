@@ -53,8 +53,8 @@ const config = {
   plugins: [function pluginArchiveAssets() {
     return {
       name: 'plugin-archive-assets',
-      configureWebpack() {
-        return {module: {rules: [
+      configureWebpack(webpackConfig) {
+        return {...(webpackConfig.mode === 'production' ? {devtool: false} : {}), module: {rules: [
           {test: /unrar\.wasm$/, type: 'asset/resource'},
           // The package imports './unrar'; resolve its JS factory before the same-name WASM.
           {test: /unrar\.singleton\.js$/, resolve: {extensions: ['.js']}},
@@ -115,6 +115,10 @@ const config = {
               {
                 to: '/plugin-converter',
                 label: '插件转换器',
+              },
+              {
+                to: '/plugin-encryptor',
+                label: '插件加密工具',
               },
               {
                 to: '/rewrite-builder',
