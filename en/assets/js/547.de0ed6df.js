@@ -332,7 +332,7 @@ var imix;         // inverse mix-columns table
  * The word [a0, a1, a2, a3] is a polynomial a3x^3 + a2x^2 + a1x + a0.
  *
  * Addition is performed by XOR'ing like powers of x. Multiplication
- * is performed in two steps, the first is an algebraic expansion as
+ * is performed in two steps, the first is an algebriac expansion as
  * you would do normally (where addition is XOR). But the result is
  * a polynomial larger than 3 degrees and thus it cannot fit in a word. So
  * next the result is modularly reduced by an AES-specific polynomial of
@@ -1671,11 +1671,6 @@ asn1.Type = {
 };
 
 /**
- * Sets the default maximum recursion depth when parsing ASN.1 structures.
- */
-asn1.maxDepth = 256;
-
-/**
  * Creates a new asn1 object.
  *
  * @param tagClass the tag class for the object.
@@ -1916,8 +1911,6 @@ var _getValueLength = function(bytes, remaining) {
  *            erroneously decode values that happen to be valid ASN.1. This
  *            flag will be deprecated or removed as soon as schema support is
  *            available. (default: true)
- *          [maxDepth] override asn1.maxDepth recursion limit
- *            (default: asn1.maxDepth)
  *
  * @throws Will throw an error for various malformed input conditions.
  *
@@ -1947,9 +1940,6 @@ asn1.fromDer = function(bytes, options) {
   if(!('decodeBitStrings' in options)) {
     options.decodeBitStrings = true;
   }
-  if(!('maxDepth' in options)) {
-    options.maxDepth = asn1.maxDepth;
-  }
 
   // wrap in buffer if needed
   if(typeof bytes === 'string') {
@@ -1978,12 +1968,6 @@ asn1.fromDer = function(bytes, options) {
  * @return the parsed asn1 object.
  */
 function _fromDer(bytes, remaining, depth, options) {
-
-  // check depth limit
-  if(depth >= options.maxDepth) {
-    throw new Error('ASN.1 parsing error: Max depth exceeded.');
-  }
-
   // temporary storage for consumption calculations
   var start;
 
@@ -2281,10 +2265,6 @@ asn1.oidToDer = function(oid) {
     last = true;
     valueBytes = [];
     value = parseInt(values[i], 10);
-    // TODO: Change bitwise logic to allow larger values.
-    if(value > 0xffffffff) {
-      throw new Error('OID value too large; max is 32-bits.');
-    }
     do {
       b = value & 0x7F;
       value = value >>> 7;
@@ -2330,13 +2310,8 @@ asn1.derToOid = function(bytes) {
   // the last byte for each value
   var value = 0;
   while(bytes.length() > 0) {
-    // error if 7b shift would exceed Number.MAX_SAFE_INTEGER
-    // (Number.MAX_SAFE_INTEGER / 128)
-    if(value > 0x3fffffffffff) {
-      throw new Error('OID value too large; max is 53-bits.');
-    }
     b = bytes.getByte();
-    value = value * 128;
+    value = value << 7;
     // not the last byte for the value
     if(b & 0x80) {
       value += b & 0x7F;
@@ -2682,65 +2657,22 @@ asn1.validate = function(obj, v, capture, errors) {
       if(v.value && forge.util.isArray(v.value)) {
         var j = 0;
         for(var i = 0; rval && i < v.value.length; ++i) {
-          var schemaItem = v.value[i];
-          rval = !!schemaItem.optional;
-
-          // current child in the object
-          var objChild = obj.value[j];
-
-          // if there is no child left to match
-          if(!objChild) {
-            // if optional, ok (rval already true), else fail below
-            if(!schemaItem.optional) {
-              rval = false;
-              if(errors) {
-                errors.push('[' + v.name + '] ' +
-                  'Missing required element. Expected tag class "' +
-                  schemaItem.tagClass + '", type "' + schemaItem.type + '"');
-              }
-            }
-            continue;
-          }
-
-          // If schema explicitly specifies tagClass/type, do a quick structural check
-          // to avoid unnecessary recursion/side-effects when tags clearly don't match.
-          var schemaHasTag = (typeof schemaItem.tagClass !== 'undefined' &&
-            typeof schemaItem.type !== 'undefined');
-
-          if(schemaHasTag &&
-            (objChild.tagClass !== schemaItem.tagClass || objChild.type !== schemaItem.type)) {
-            // Tags do not match.
-            if(schemaItem.optional) {
-              // Skip this schema element (don't consume objChild; don't call recursive validate).
+          rval = v.value[i].optional || false;
+          if(obj.value[j]) {
+            rval = asn1.validate(obj.value[j], v.value[i], capture, errors);
+            if(rval) {
+              ++j;
+            } else if(v.value[i].optional) {
               rval = true;
-              continue;
-            } else {
-              // Required schema item mismatched - fail.
-              rval = false;
-              if(errors) {
-                errors.push('[' + v.name + '] ' +
-                  'Tag mismatch. Expected (' +
-                  schemaItem.tagClass + ',' + schemaItem.type + '), got (' +
-                  objChild.tagClass + ',' + objChild.type + ')');
-              }
-              break;
             }
           }
-
-          // Tags are compatible (or schema did not declare tags) - dive into recursive validate.
-          var childRval = asn1.validate(objChild, schemaItem, capture, errors);
-          if(childRval) {
-            // consume this child
-            ++j;
-            rval = true;
-          } else if(schemaItem.optional) {
-            // validation failed but element is optional => skip schema item (don't consume child)
-            rval = true;
-          } else {
-            // required item failed
-            rval = false;
-            // errors should already be populated by recursive call; keep failing
-            break;
+          if(!rval && errors) {
+            errors.push(
+              '[' + v.name + '] ' +
+              'Tag class "' + v.tagClass + '", type "' +
+              v.type + '" expected value length "' +
+              v.value.length + '", got "' +
+              obj.value.length + '"');
           }
         }
       }
@@ -2786,8 +2718,7 @@ asn1.validate = function(obj, v, capture, errors) {
     if(obj.type !== v.type) {
       errors.push(
         '[' + v.name + '] ' +
-        'Expected type "' + v.type + '", got "' +
-        obj.type + '"');
+        'Expected type "' + v.type + '", got "' + obj.type + '"');
     }
   }
   return rval;
@@ -5321,10 +5252,6 @@ function crypto_sign_open(m, sm, n, pk) {
     return -1;
   }
 
-  if(!_isCanonicalSignatureScalar(sm, 32)) {
-    return -1;
-  }
-
   for(i = 0; i < n; ++i) {
     m[i] = sm[i];
   }
@@ -5352,21 +5279,6 @@ function crypto_sign_open(m, sm, n, pk) {
   }
   mlen = n;
   return mlen;
-}
-
-function _isCanonicalSignatureScalar(bytes, offset) {
-  var i;
-  // Compare little-endian scalar S against group order L and require S < L.
-  for(i = 31; i >= 0; --i) {
-    if(bytes[offset + i] < L[i]) {
-      return true;
-    }
-    if(bytes[offset + i] > L[i]) {
-      return false;
-    }
-  }
-  // S == L is non-canonical.
-  return false;
 }
 
 function modL(r, x) {
@@ -6376,12 +6288,10 @@ if(typeof(navigator) === 'undefined')
 } else if(j_lm && (navigator.appName == "Microsoft Internet Explorer")) {
   BigInteger.prototype.am = am2;
   dbits = 30;
-}
-else if(j_lm && (navigator.appName != "Netscape")) {
+} else if(j_lm && (navigator.appName != "Netscape")) {
   BigInteger.prototype.am = am1;
   dbits = 26;
-}
-else { // Mozilla/Netscape seems to prefer am3
+} else { // Mozilla/Netscape seems to prefer am3
   BigInteger.prototype.am = am3;
   dbits = 28;
 }
@@ -6456,8 +6366,7 @@ function bnpFromString(s,b) {
     else if(sh+k > this.DB) {
       this.data[this.t-1] |= (x&((1<<(this.DB-sh))-1))<<sh;
       this.data[this.t++] = (x>>(this.DB-sh));
-    }
-    else
+    } else
       this.data[this.t-1] |= x<<sh;
     sh += k;
     if(sh >= this.DB) sh -= this.DB;
@@ -6494,8 +6403,7 @@ function bnToString(b) {
       if(p < k) {
         d = (this.data[i]&((1<<p)-1))<<(k-p);
         d |= this.data[--i]>>(p+=this.DB-k);
-      }
-      else {
+      } else {
         d = (this.data[i]>>(p-=k))&km;
         if(p <= 0) { p += this.DB; --i; }
       }
@@ -6607,8 +6515,7 @@ function bnpSubTo(a,r) {
       c >>= this.DB;
     }
     c += this.s;
-  }
-  else {
+  } else {
     c += this.s;
     while(i < a.t) {
       c -= a.data[i];
@@ -6668,8 +6575,7 @@ function bnpDivRemTo(m,q,r) {
   if(r == null) r = nbi();
   var y = nbi(), ts = this.s, ms = m.s;
   var nsh = this.DB-nbits(pm.data[pm.t-1]);	// normalize modulus
-  if(nsh > 0) { pm.lShiftTo(nsh,y); pt.lShiftTo(nsh,r); }
-  else { pm.copyTo(y); pt.copyTo(r); }
+  if(nsh > 0) { pm.lShiftTo(nsh,y); pt.lShiftTo(nsh,r); } else { pm.copyTo(y); pt.copyTo(r); }
   var ys = y.t;
   var y0 = y.data[ys-1];
   if(y0 == 0) return;
@@ -6866,335 +6772,326 @@ BigInteger.ONE = nbv(1);
 
 // jsbn2 lib
 
-// Copyright (c) 2005-2009  Tom Wu
-// All Rights Reserved.
-// See "LICENSE" for details (See jsbn.js for LICENSE).
+//Copyright (c) 2005-2009  Tom Wu
+//All Rights Reserved.
+//See "LICENSE" for details (See jsbn.js for LICENSE).
 
-// Extended JavaScript BN functions, required for RSA private ops.
+//Extended JavaScript BN functions, required for RSA private ops.
 
-// Version 1.1: new BigInteger("0", 10) returns "proper" zero
-// Version 1.2: square() API, isProbablePrime fix
+//Version 1.1: new BigInteger("0", 10) returns "proper" zero
 
-// (public)
+//(public)
 function bnClone() { var r = nbi(); this.copyTo(r); return r; }
 
-// (public) return value as integer
+//(public) return value as integer
 function bnIntValue() {
-  if(this.s < 0) {
-    if(this.t == 1) return this.data[0]-this.DV;
-    else if(this.t == 0) return -1;
-  }
-  else if(this.t == 1) return this.data[0];
-  else if(this.t == 0) return 0;
-  // assumes 16 < DB < 32
-  return ((this.data[1]&((1<<(32-this.DB))-1))<<this.DB)|this.data[0];
+if(this.s < 0) {
+ if(this.t == 1) return this.data[0]-this.DV;
+ else if(this.t == 0) return -1;
+} else if(this.t == 1) return this.data[0];
+else if(this.t == 0) return 0;
+// assumes 16 < DB < 32
+return ((this.data[1]&((1<<(32-this.DB))-1))<<this.DB)|this.data[0];
 }
 
-// (public) return value as byte
+//(public) return value as byte
 function bnByteValue() { return (this.t==0)?this.s:(this.data[0]<<24)>>24; }
 
-// (public) return value as short (assumes DB>=16)
+//(public) return value as short (assumes DB>=16)
 function bnShortValue() { return (this.t==0)?this.s:(this.data[0]<<16)>>16; }
 
-// (protected) return x s.t. r^x < DV
+//(protected) return x s.t. r^x < DV
 function bnpChunkSize(r) { return Math.floor(Math.LN2*this.DB/Math.log(r)); }
 
-// (public) 0 if this == 0, 1 if this > 0
+//(public) 0 if this == 0, 1 if this > 0
 function bnSigNum() {
-  if(this.s < 0) return -1;
-  else if(this.t <= 0 || (this.t == 1 && this.data[0] <= 0)) return 0;
-  else return 1;
+if(this.s < 0) return -1;
+else if(this.t <= 0 || (this.t == 1 && this.data[0] <= 0)) return 0;
+else return 1;
 }
 
-// (protected) convert to radix string
+//(protected) convert to radix string
 function bnpToRadix(b) {
-  if(b == null) b = 10;
-  if(this.signum() == 0 || b < 2 || b > 36) return "0";
-  var cs = this.chunkSize(b);
-  var a = Math.pow(b,cs);
-  var d = nbv(a), y = nbi(), z = nbi(), r = "";
-  this.divRemTo(d,y,z);
-  while(y.signum() > 0) {
-    r = (a+z.intValue()).toString(b).substr(1) + r;
-    y.divRemTo(d,y,z);
-  }
-  return z.intValue().toString(b) + r;
+if(b == null) b = 10;
+if(this.signum() == 0 || b < 2 || b > 36) return "0";
+var cs = this.chunkSize(b);
+var a = Math.pow(b,cs);
+var d = nbv(a), y = nbi(), z = nbi(), r = "";
+this.divRemTo(d,y,z);
+while(y.signum() > 0) {
+ r = (a+z.intValue()).toString(b).substr(1) + r;
+ y.divRemTo(d,y,z);
+}
+return z.intValue().toString(b) + r;
 }
 
-// (protected) convert from radix string
+//(protected) convert from radix string
 function bnpFromRadix(s,b) {
-  this.fromInt(0);
-  if(b == null) b = 10;
-  var cs = this.chunkSize(b);
-  var d = Math.pow(b,cs), mi = false, j = 0, w = 0;
-  for(var i = 0; i < s.length; ++i) {
-    var x = intAt(s,i);
-    if(x < 0) {
-      if(s.charAt(i) == "-" && this.signum() == 0) mi = true;
-      continue;
-    }
-    w = b*w+x;
-    if(++j >= cs) {
-      this.dMultiply(d);
-      this.dAddOffset(w,0);
-      j = 0;
-      w = 0;
-    }
-  }
-  if(j > 0) {
-    this.dMultiply(Math.pow(b,j));
-    this.dAddOffset(w,0);
-  }
-  if(mi) BigInteger.ZERO.subTo(this,this);
+this.fromInt(0);
+if(b == null) b = 10;
+var cs = this.chunkSize(b);
+var d = Math.pow(b,cs), mi = false, j = 0, w = 0;
+for(var i = 0; i < s.length; ++i) {
+ var x = intAt(s,i);
+ if(x < 0) {
+   if(s.charAt(i) == "-" && this.signum() == 0) mi = true;
+   continue;
+ }
+ w = b*w+x;
+ if(++j >= cs) {
+   this.dMultiply(d);
+   this.dAddOffset(w,0);
+   j = 0;
+   w = 0;
+ }
+}
+if(j > 0) {
+ this.dMultiply(Math.pow(b,j));
+ this.dAddOffset(w,0);
+}
+if(mi) BigInteger.ZERO.subTo(this,this);
 }
 
-// (protected) alternate constructor
+//(protected) alternate constructor
 function bnpFromNumber(a,b,c) {
-  if("number" == typeof b) {
-    // new BigInteger(int,int,RNG)
-    if(a < 2) this.fromInt(1);
-    else {
-      this.fromNumber(a,c);
-      if(!this.testBit(a-1))	// force MSB set
-        this.bitwiseTo(BigInteger.ONE.shiftLeft(a-1),op_or,this);
-      if(this.isEven()) this.dAddOffset(1,0); // force odd
-      while(!this.isProbablePrime(b)) {
-        this.dAddOffset(2,0);
-        if(this.bitLength() > a) this.subTo(BigInteger.ONE.shiftLeft(a-1),this);
-      }
-    }
-  }
-  else {
-    // new BigInteger(int,RNG)
-    var x = new Array(), t = a&7;
-    x.length = (a>>3)+1;
-    b.nextBytes(x);
-    if(t > 0) x[0] &= ((1<<t)-1); else x[0] = 0;
-    this.fromString(x,256);
-  }
+if("number" == typeof b) {
+ // new BigInteger(int,int,RNG)
+ if(a < 2) this.fromInt(1);
+ else {
+   this.fromNumber(a,c);
+   if(!this.testBit(a-1))  // force MSB set
+     this.bitwiseTo(BigInteger.ONE.shiftLeft(a-1),op_or,this);
+   if(this.isEven()) this.dAddOffset(1,0); // force odd
+   while(!this.isProbablePrime(b)) {
+     this.dAddOffset(2,0);
+     if(this.bitLength() > a) this.subTo(BigInteger.ONE.shiftLeft(a-1),this);
+   }
+ }
+} else {
+ // new BigInteger(int,RNG)
+ var x = new Array(), t = a&7;
+ x.length = (a>>3)+1;
+ b.nextBytes(x);
+ if(t > 0) x[0] &= ((1<<t)-1); else x[0] = 0;
+ this.fromString(x,256);
+}
 }
 
-// (public) convert to bigendian byte array
+//(public) convert to bigendian byte array
 function bnToByteArray() {
-  var i = this.t, r = new Array();
-  r[0] = this.s;
-  var p = this.DB-(i*this.DB)%8, d, k = 0;
-  if(i-- > 0) {
-    if(p < this.DB && (d = this.data[i]>>p) != (this.s&this.DM)>>p)
-      r[k++] = d|(this.s<<(this.DB-p));
-    while(i >= 0) {
-      if(p < 8) {
-        d = (this.data[i]&((1<<p)-1))<<(8-p);
-        d |= this.data[--i]>>(p+=this.DB-8);
-      }
-      else {
-        d = (this.data[i]>>(p-=8))&0xff;
-        if(p <= 0) { p += this.DB; --i; }
-      }
-      if((d&0x80) != 0) d |= -256;
-      if(k == 0 && (this.s&0x80) != (d&0x80)) ++k;
-      if(k > 0 || d != this.s) r[k++] = d;
-    }
-  }
-  return r;
+var i = this.t, r = new Array();
+r[0] = this.s;
+var p = this.DB-(i*this.DB)%8, d, k = 0;
+if(i-- > 0) {
+ if(p < this.DB && (d = this.data[i]>>p) != (this.s&this.DM)>>p)
+   r[k++] = d|(this.s<<(this.DB-p));
+ while(i >= 0) {
+   if(p < 8) {
+     d = (this.data[i]&((1<<p)-1))<<(8-p);
+     d |= this.data[--i]>>(p+=this.DB-8);
+   } else {
+     d = (this.data[i]>>(p-=8))&0xff;
+     if(p <= 0) { p += this.DB; --i; }
+   }
+   if((d&0x80) != 0) d |= -256;
+   if(k == 0 && (this.s&0x80) != (d&0x80)) ++k;
+   if(k > 0 || d != this.s) r[k++] = d;
+ }
+}
+return r;
 }
 
 function bnEquals(a) { return(this.compareTo(a)==0); }
 function bnMin(a) { return(this.compareTo(a)<0)?this:a; }
 function bnMax(a) { return(this.compareTo(a)>0)?this:a; }
 
-// (protected) r = this op a (bitwise)
+//(protected) r = this op a (bitwise)
 function bnpBitwiseTo(a,op,r) {
-  var i, f, m = Math.min(a.t,this.t);
-  for(i = 0; i < m; ++i) r.data[i] = op(this.data[i],a.data[i]);
-  if(a.t < this.t) {
-    f = a.s&this.DM;
-    for(i = m; i < this.t; ++i) r.data[i] = op(this.data[i],f);
-    r.t = this.t;
-  }
-  else {
-    f = this.s&this.DM;
-    for(i = m; i < a.t; ++i) r.data[i] = op(f,a.data[i]);
-    r.t = a.t;
-  }
-  r.s = op(this.s,a.s);
-  r.clamp();
+var i, f, m = Math.min(a.t,this.t);
+for(i = 0; i < m; ++i) r.data[i] = op(this.data[i],a.data[i]);
+if(a.t < this.t) {
+ f = a.s&this.DM;
+ for(i = m; i < this.t; ++i) r.data[i] = op(this.data[i],f);
+ r.t = this.t;
+} else {
+ f = this.s&this.DM;
+ for(i = m; i < a.t; ++i) r.data[i] = op(f,a.data[i]);
+ r.t = a.t;
+}
+r.s = op(this.s,a.s);
+r.clamp();
 }
 
-// (public) this & a
+//(public) this & a
 function op_and(x,y) { return x&y; }
 function bnAnd(a) { var r = nbi(); this.bitwiseTo(a,op_and,r); return r; }
 
-// (public) this | a
+//(public) this | a
 function op_or(x,y) { return x|y; }
 function bnOr(a) { var r = nbi(); this.bitwiseTo(a,op_or,r); return r; }
 
-// (public) this ^ a
+//(public) this ^ a
 function op_xor(x,y) { return x^y; }
 function bnXor(a) { var r = nbi(); this.bitwiseTo(a,op_xor,r); return r; }
 
-// (public) this & ~a
+//(public) this & ~a
 function op_andnot(x,y) { return x&~y; }
 function bnAndNot(a) { var r = nbi(); this.bitwiseTo(a,op_andnot,r); return r; }
 
-// (public) ~this
+//(public) ~this
 function bnNot() {
-  var r = nbi();
-  for(var i = 0; i < this.t; ++i) r.data[i] = this.DM&~this.data[i];
-  r.t = this.t;
-  r.s = ~this.s;
-  return r;
+var r = nbi();
+for(var i = 0; i < this.t; ++i) r.data[i] = this.DM&~this.data[i];
+r.t = this.t;
+r.s = ~this.s;
+return r;
 }
 
-// (public) this << n
+//(public) this << n
 function bnShiftLeft(n) {
-  var r = nbi();
-  if(n < 0) this.rShiftTo(-n,r); else this.lShiftTo(n,r);
-  return r;
+var r = nbi();
+if(n < 0) this.rShiftTo(-n,r); else this.lShiftTo(n,r);
+return r;
 }
 
-// (public) this >> n
+//(public) this >> n
 function bnShiftRight(n) {
-  var r = nbi();
-  if(n < 0) this.lShiftTo(-n,r); else this.rShiftTo(n,r);
-  return r;
+var r = nbi();
+if(n < 0) this.lShiftTo(-n,r); else this.rShiftTo(n,r);
+return r;
 }
 
-// return index of lowest 1-bit in x, x < 2^31
+//return index of lowest 1-bit in x, x < 2^31
 function lbit(x) {
-  if(x == 0) return -1;
-  var r = 0;
-  if((x&0xffff) == 0) { x >>= 16; r += 16; }
-  if((x&0xff) == 0) { x >>= 8; r += 8; }
-  if((x&0xf) == 0) { x >>= 4; r += 4; }
-  if((x&3) == 0) { x >>= 2; r += 2; }
-  if((x&1) == 0) ++r;
-  return r;
+if(x == 0) return -1;
+var r = 0;
+if((x&0xffff) == 0) { x >>= 16; r += 16; }
+if((x&0xff) == 0) { x >>= 8; r += 8; }
+if((x&0xf) == 0) { x >>= 4; r += 4; }
+if((x&3) == 0) { x >>= 2; r += 2; }
+if((x&1) == 0) ++r;
+return r;
 }
 
-// (public) returns index of lowest 1-bit (or -1 if none)
+//(public) returns index of lowest 1-bit (or -1 if none)
 function bnGetLowestSetBit() {
-  for(var i = 0; i < this.t; ++i)
-    if(this.data[i] != 0) return i*this.DB+lbit(this.data[i]);
-  if(this.s < 0) return this.t*this.DB;
-  return -1;
+for(var i = 0; i < this.t; ++i)
+ if(this.data[i] != 0) return i*this.DB+lbit(this.data[i]);
+if(this.s < 0) return this.t*this.DB;
+return -1;
 }
 
-// return number of 1 bits in x
+//return number of 1 bits in x
 function cbit(x) {
-  var r = 0;
-  while(x != 0) { x &= x-1; ++r; }
-  return r;
+var r = 0;
+while(x != 0) { x &= x-1; ++r; }
+return r;
 }
 
-// (public) return number of set bits
+//(public) return number of set bits
 function bnBitCount() {
-  var r = 0, x = this.s&this.DM;
-  for(var i = 0; i < this.t; ++i) r += cbit(this.data[i]^x);
-  return r;
+var r = 0, x = this.s&this.DM;
+for(var i = 0; i < this.t; ++i) r += cbit(this.data[i]^x);
+return r;
 }
 
-// (public) true iff nth bit is set
+//(public) true iff nth bit is set
 function bnTestBit(n) {
-  var j = Math.floor(n/this.DB);
-  if(j >= this.t) return(this.s!=0);
-  return((this.data[j]&(1<<(n%this.DB)))!=0);
+var j = Math.floor(n/this.DB);
+if(j >= this.t) return(this.s!=0);
+return((this.data[j]&(1<<(n%this.DB)))!=0);
 }
 
-// (protected) this op (1<<n)
+//(protected) this op (1<<n)
 function bnpChangeBit(n,op) {
-  var r = BigInteger.ONE.shiftLeft(n);
-  this.bitwiseTo(r,op,r);
-  return r;
+var r = BigInteger.ONE.shiftLeft(n);
+this.bitwiseTo(r,op,r);
+return r;
 }
 
-// (public) this | (1<<n)
+//(public) this | (1<<n)
 function bnSetBit(n) { return this.changeBit(n,op_or); }
 
-// (public) this & ~(1<<n)
+//(public) this & ~(1<<n)
 function bnClearBit(n) { return this.changeBit(n,op_andnot); }
 
-// (public) this ^ (1<<n)
+//(public) this ^ (1<<n)
 function bnFlipBit(n) { return this.changeBit(n,op_xor); }
 
-// (protected) r = this + a
+//(protected) r = this + a
 function bnpAddTo(a,r) {
-  var i = 0, c = 0, m = Math.min(a.t,this.t);
-  while(i < m) {
-    c += this.data[i]+a.data[i];
-    r.data[i++] = c&this.DM;
-    c >>= this.DB;
-  }
-  if(a.t < this.t) {
-    c += a.s;
-    while(i < this.t) {
-      c += this.data[i];
-      r.data[i++] = c&this.DM;
-      c >>= this.DB;
-    }
-    c += this.s;
-  }
-  else {
-    c += this.s;
-    while(i < a.t) {
-      c += a.data[i];
-      r.data[i++] = c&this.DM;
-      c >>= this.DB;
-    }
-    c += a.s;
-  }
-  r.s = (c<0)?-1:0;
-  if(c > 0) r.data[i++] = c;
-  else if(c < -1) r.data[i++] = this.DV+c;
-  r.t = i;
-  r.clamp();
+var i = 0, c = 0, m = Math.min(a.t,this.t);
+while(i < m) {
+ c += this.data[i]+a.data[i];
+ r.data[i++] = c&this.DM;
+ c >>= this.DB;
+}
+if(a.t < this.t) {
+ c += a.s;
+ while(i < this.t) {
+   c += this.data[i];
+   r.data[i++] = c&this.DM;
+   c >>= this.DB;
+ }
+ c += this.s;
+} else {
+ c += this.s;
+ while(i < a.t) {
+   c += a.data[i];
+   r.data[i++] = c&this.DM;
+   c >>= this.DB;
+ }
+ c += a.s;
+}
+r.s = (c<0)?-1:0;
+if(c > 0) r.data[i++] = c;
+else if(c < -1) r.data[i++] = this.DV+c;
+r.t = i;
+r.clamp();
 }
 
-// (public) this + a
+//(public) this + a
 function bnAdd(a) { var r = nbi(); this.addTo(a,r); return r; }
 
-// (public) this - a
+//(public) this - a
 function bnSubtract(a) { var r = nbi(); this.subTo(a,r); return r; }
 
-// (public) this * a
+//(public) this * a
 function bnMultiply(a) { var r = nbi(); this.multiplyTo(a,r); return r; }
 
-// (public) this^2
-function bnSquare() { var r = nbi(); this.squareTo(r); return r; }
-
-// (public) this / a
+//(public) this / a
 function bnDivide(a) { var r = nbi(); this.divRemTo(a,r,null); return r; }
 
-// (public) this % a
+//(public) this % a
 function bnRemainder(a) { var r = nbi(); this.divRemTo(a,null,r); return r; }
 
-// (public) [this/a,this%a]
+//(public) [this/a,this%a]
 function bnDivideAndRemainder(a) {
-  var q = nbi(), r = nbi();
-  this.divRemTo(a,q,r);
-  return new Array(q,r);
+var q = nbi(), r = nbi();
+this.divRemTo(a,q,r);
+return new Array(q,r);
 }
 
-// (protected) this *= n, this >= 0, 1 < n < DV
+//(protected) this *= n, this >= 0, 1 < n < DV
 function bnpDMultiply(n) {
-  this.data[this.t] = this.am(0,n-1,this,0,0,this.t);
-  ++this.t;
-  this.clamp();
+this.data[this.t] = this.am(0,n-1,this,0,0,this.t);
+++this.t;
+this.clamp();
 }
 
-// (protected) this += n << w words, this >= 0
+//(protected) this += n << w words, this >= 0
 function bnpDAddOffset(n,w) {
-  if(n == 0) return;
-  while(this.t <= w) this.data[this.t++] = 0;
-  this.data[w] += n;
-  while(this.data[w] >= this.DV) {
-    this.data[w] -= this.DV;
-    if(++w >= this.t) this.data[this.t++] = 0;
-    ++this.data[w];
-  }
+if(n == 0) return;
+while(this.t <= w) this.data[this.t++] = 0;
+this.data[w] += n;
+while(this.data[w] >= this.DV) {
+ this.data[w] -= this.DV;
+ if(++w >= this.t) this.data[this.t++] = 0;
+ ++this.data[w];
+}
 }
 
-// A "null" reducer
+//A "null" reducer
 function NullExp() {}
 function nNop(x) { return x; }
 function nMulTo(x,y,r) { x.multiplyTo(y,r); }
@@ -7205,68 +7102,68 @@ NullExp.prototype.revert = nNop;
 NullExp.prototype.mulTo = nMulTo;
 NullExp.prototype.sqrTo = nSqrTo;
 
-// (public) this^e
+//(public) this^e
 function bnPow(e) { return this.exp(e,new NullExp()); }
 
-// (protected) r = lower n words of "this * a", a.t <= n
-// "this" should be the larger one if appropriate.
+//(protected) r = lower n words of "this * a", a.t <= n
+//"this" should be the larger one if appropriate.
 function bnpMultiplyLowerTo(a,n,r) {
-  var i = Math.min(this.t+a.t,n);
-  r.s = 0; // assumes a,this >= 0
-  r.t = i;
-  while(i > 0) r.data[--i] = 0;
-  var j;
-  for(j = r.t-this.t; i < j; ++i) r.data[i+this.t] = this.am(0,a.data[i],r,i,0,this.t);
-  for(j = Math.min(a.t,n); i < j; ++i) this.am(0,a.data[i],r,i,0,n-i);
-  r.clamp();
+var i = Math.min(this.t+a.t,n);
+r.s = 0; // assumes a,this >= 0
+r.t = i;
+while(i > 0) r.data[--i] = 0;
+var j;
+for(j = r.t-this.t; i < j; ++i) r.data[i+this.t] = this.am(0,a.data[i],r,i,0,this.t);
+for(j = Math.min(a.t,n); i < j; ++i) this.am(0,a.data[i],r,i,0,n-i);
+r.clamp();
 }
 
-// (protected) r = "this * a" without lower n words, n > 0
-// "this" should be the larger one if appropriate.
+//(protected) r = "this * a" without lower n words, n > 0
+//"this" should be the larger one if appropriate.
 function bnpMultiplyUpperTo(a,n,r) {
-  --n;
-  var i = r.t = this.t+a.t-n;
-  r.s = 0; // assumes a,this >= 0
-  while(--i >= 0) r.data[i] = 0;
-  for(i = Math.max(n-this.t,0); i < a.t; ++i)
-    r.data[this.t+i-n] = this.am(n-i,a.data[i],r,0,0,this.t+i-n);
-  r.clamp();
-  r.drShiftTo(1,r);
+--n;
+var i = r.t = this.t+a.t-n;
+r.s = 0; // assumes a,this >= 0
+while(--i >= 0) r.data[i] = 0;
+for(i = Math.max(n-this.t,0); i < a.t; ++i)
+ r.data[this.t+i-n] = this.am(n-i,a.data[i],r,0,0,this.t+i-n);
+r.clamp();
+r.drShiftTo(1,r);
 }
 
-// Barrett modular reduction
+//Barrett modular reduction
 function Barrett(m) {
-  // setup Barrett
-  this.r2 = nbi();
-  this.q3 = nbi();
-  BigInteger.ONE.dlShiftTo(2*m.t,this.r2);
-  this.mu = this.r2.divide(m);
-  this.m = m;
+// setup Barrett
+this.r2 = nbi();
+this.q3 = nbi();
+BigInteger.ONE.dlShiftTo(2*m.t,this.r2);
+this.mu = this.r2.divide(m);
+this.m = m;
 }
 
 function barrettConvert(x) {
-  if(x.s < 0 || x.t > 2*this.m.t) return x.mod(this.m);
-  else if(x.compareTo(this.m) < 0) return x;
-  else { var r = nbi(); x.copyTo(r); this.reduce(r); return r; }
+if(x.s < 0 || x.t > 2*this.m.t) return x.mod(this.m);
+else if(x.compareTo(this.m) < 0) return x;
+else { var r = nbi(); x.copyTo(r); this.reduce(r); return r; }
 }
 
 function barrettRevert(x) { return x; }
 
-// x = x mod m (HAC 14.42)
+//x = x mod m (HAC 14.42)
 function barrettReduce(x) {
-  x.drShiftTo(this.m.t-1,this.r2);
-  if(x.t > this.m.t+1) { x.t = this.m.t+1; x.clamp(); }
-  this.mu.multiplyUpperTo(this.r2,this.m.t+1,this.q3);
-  this.m.multiplyLowerTo(this.q3,this.m.t+1,this.r2);
-  while(x.compareTo(this.r2) < 0) x.dAddOffset(1,this.m.t+1);
-  x.subTo(this.r2,x);
-  while(x.compareTo(this.m) >= 0) x.subTo(this.m,x);
+x.drShiftTo(this.m.t-1,this.r2);
+if(x.t > this.m.t+1) { x.t = this.m.t+1; x.clamp(); }
+this.mu.multiplyUpperTo(this.r2,this.m.t+1,this.q3);
+this.m.multiplyLowerTo(this.q3,this.m.t+1,this.r2);
+while(x.compareTo(this.r2) < 0) x.dAddOffset(1,this.m.t+1);
+x.subTo(this.r2,x);
+while(x.compareTo(this.m) >= 0) x.subTo(this.m,x);
 }
 
-// r = x^2 mod m; x != r
+//r = x^2 mod m; x != r
 function barrettSqrTo(x,r) { x.squareTo(r); this.reduce(r); }
 
-// r = x*y mod m; x,y != r
+//r = x*y mod m; x,y != r
 function barrettMulTo(x,y,r) { x.multiplyTo(y,r); this.reduce(r); }
 
 Barrett.prototype.convert = barrettConvert;
@@ -7275,199 +7172,187 @@ Barrett.prototype.reduce = barrettReduce;
 Barrett.prototype.mulTo = barrettMulTo;
 Barrett.prototype.sqrTo = barrettSqrTo;
 
-// (public) this^e % m (HAC 14.85)
+//(public) this^e % m (HAC 14.85)
 function bnModPow(e,m) {
-  var i = e.bitLength(), k, r = nbv(1), z;
-  if(i <= 0) return r;
-  else if(i < 18) k = 1;
-  else if(i < 48) k = 3;
-  else if(i < 144) k = 4;
-  else if(i < 768) k = 5;
-  else k = 6;
-  if(i < 8)
-    z = new Classic(m);
-  else if(m.isEven())
-    z = new Barrett(m);
-  else
-    z = new Montgomery(m);
+var i = e.bitLength(), k, r = nbv(1), z;
+if(i <= 0) return r;
+else if(i < 18) k = 1;
+else if(i < 48) k = 3;
+else if(i < 144) k = 4;
+else if(i < 768) k = 5;
+else k = 6;
+if(i < 8)
+ z = new Classic(m);
+else if(m.isEven())
+ z = new Barrett(m);
+else
+ z = new Montgomery(m);
 
-  // precomputation
-  var g = new Array(), n = 3, k1 = k-1, km = (1<<k)-1;
-  g[1] = z.convert(this);
-  if(k > 1) {
-    var g2 = nbi();
-    z.sqrTo(g[1],g2);
-    while(n <= km) {
-      g[n] = nbi();
-      z.mulTo(g2,g[n-2],g[n]);
-      n += 2;
-    }
-  }
-
-  var j = e.t-1, w, is1 = true, r2 = nbi(), t;
-  i = nbits(e.data[j])-1;
-  while(j >= 0) {
-    if(i >= k1) w = (e.data[j]>>(i-k1))&km;
-    else {
-      w = (e.data[j]&((1<<(i+1))-1))<<(k1-i);
-      if(j > 0) w |= e.data[j-1]>>(this.DB+i-k1);
-    }
-
-    n = k;
-    while((w&1) == 0) { w >>= 1; --n; }
-    if((i -= n) < 0) { i += this.DB; --j; }
-    if(is1) {	// ret == 1, don't bother squaring or multiplying it
-      g[w].copyTo(r);
-      is1 = false;
-    }
-    else {
-      while(n > 1) { z.sqrTo(r,r2); z.sqrTo(r2,r); n -= 2; }
-      if(n > 0) z.sqrTo(r,r2); else { t = r; r = r2; r2 = t; }
-      z.mulTo(r2,g[w],r);
-    }
-
-    while(j >= 0 && (e.data[j]&(1<<i)) == 0) {
-      z.sqrTo(r,r2); t = r; r = r2; r2 = t;
-      if(--i < 0) { i = this.DB-1; --j; }
-    }
-  }
-  return z.revert(r);
+// precomputation
+var g = new Array(), n = 3, k1 = k-1, km = (1<<k)-1;
+g[1] = z.convert(this);
+if(k > 1) {
+ var g2 = nbi();
+ z.sqrTo(g[1],g2);
+ while(n <= km) {
+   g[n] = nbi();
+   z.mulTo(g2,g[n-2],g[n]);
+   n += 2;
+ }
 }
 
-// (public) gcd(this,a) (HAC 14.54)
+var j = e.t-1, w, is1 = true, r2 = nbi(), t;
+i = nbits(e.data[j])-1;
+while(j >= 0) {
+ if(i >= k1) w = (e.data[j]>>(i-k1))&km;
+ else {
+   w = (e.data[j]&((1<<(i+1))-1))<<(k1-i);
+   if(j > 0) w |= e.data[j-1]>>(this.DB+i-k1);
+ }
+
+ n = k;
+ while((w&1) == 0) { w >>= 1; --n; }
+ if((i -= n) < 0) { i += this.DB; --j; }
+ if(is1) {  // ret == 1, don't bother squaring or multiplying it
+   g[w].copyTo(r);
+   is1 = false;
+ } else {
+   while(n > 1) { z.sqrTo(r,r2); z.sqrTo(r2,r); n -= 2; }
+   if(n > 0) z.sqrTo(r,r2); else { t = r; r = r2; r2 = t; }
+   z.mulTo(r2,g[w],r);
+ }
+
+ while(j >= 0 && (e.data[j]&(1<<i)) == 0) {
+   z.sqrTo(r,r2); t = r; r = r2; r2 = t;
+   if(--i < 0) { i = this.DB-1; --j; }
+ }
+}
+return z.revert(r);
+}
+
+//(public) gcd(this,a) (HAC 14.54)
 function bnGCD(a) {
-  var x = (this.s<0)?this.negate():this.clone();
-  var y = (a.s<0)?a.negate():a.clone();
-  if(x.compareTo(y) < 0) { var t = x; x = y; y = t; }
-  var i = x.getLowestSetBit(), g = y.getLowestSetBit();
-  if(g < 0) return x;
-  if(i < g) g = i;
-  if(g > 0) {
-    x.rShiftTo(g,x);
-    y.rShiftTo(g,y);
-  }
-  while(x.signum() > 0) {
-    if((i = x.getLowestSetBit()) > 0) x.rShiftTo(i,x);
-    if((i = y.getLowestSetBit()) > 0) y.rShiftTo(i,y);
-    if(x.compareTo(y) >= 0) {
-      x.subTo(y,x);
-      x.rShiftTo(1,x);
-    }
-    else {
-      y.subTo(x,y);
-      y.rShiftTo(1,y);
-    }
-  }
-  if(g > 0) y.lShiftTo(g,y);
-  return y;
+var x = (this.s<0)?this.negate():this.clone();
+var y = (a.s<0)?a.negate():a.clone();
+if(x.compareTo(y) < 0) { var t = x; x = y; y = t; }
+var i = x.getLowestSetBit(), g = y.getLowestSetBit();
+if(g < 0) return x;
+if(i < g) g = i;
+if(g > 0) {
+ x.rShiftTo(g,x);
+ y.rShiftTo(g,y);
+}
+while(x.signum() > 0) {
+ if((i = x.getLowestSetBit()) > 0) x.rShiftTo(i,x);
+ if((i = y.getLowestSetBit()) > 0) y.rShiftTo(i,y);
+ if(x.compareTo(y) >= 0) {
+   x.subTo(y,x);
+   x.rShiftTo(1,x);
+ } else {
+   y.subTo(x,y);
+   y.rShiftTo(1,y);
+ }
+}
+if(g > 0) y.lShiftTo(g,y);
+return y;
 }
 
-// (protected) this % n, n < 2^26
+//(protected) this % n, n < 2^26
 function bnpModInt(n) {
-  if(n <= 0) return 0;
-  var d = this.DV%n, r = (this.s<0)?n-1:0;
-  if(this.t > 0)
-    if(d == 0) r = this.data[0]%n;
-    else for(var i = this.t-1; i >= 0; --i) r = (d*r+this.data[i])%n;
-  return r;
+if(n <= 0) return 0;
+var d = this.DV%n, r = (this.s<0)?n-1:0;
+if(this.t > 0)
+ if(d == 0) r = this.data[0]%n;
+ else for(var i = this.t-1; i >= 0; --i) r = (d*r+this.data[i])%n;
+return r;
 }
 
-// (public) 1/this % m (HAC 14.61)
+//(public) 1/this % m (HAC 14.61)
 function bnModInverse(m) {
-  // FORGE: jsbn fix
-  // avoid infinite loop
-  if(this.signum() == 0) {
-    // returning zero to align with similar behavior when no multiplicative
-    // inverse module m is found.
-    return BigInteger.ZERO;
-  }
-  var ac = m.isEven();
-  if((this.isEven() && ac) || m.signum() == 0) return BigInteger.ZERO;
-  var u = m.clone(), v = this.clone();
-  var a = nbv(1), b = nbv(0), c = nbv(0), d = nbv(1);
-  while(u.signum() != 0) {
-    while(u.isEven()) {
-      u.rShiftTo(1,u);
-      if(ac) {
-        if(!a.isEven() || !b.isEven()) { a.addTo(this,a); b.subTo(m,b); }
-        a.rShiftTo(1,a);
-      }
-      else if(!b.isEven()) b.subTo(m,b);
-      b.rShiftTo(1,b);
-    }
-    while(v.isEven()) {
-      v.rShiftTo(1,v);
-      if(ac) {
-        if(!c.isEven() || !d.isEven()) { c.addTo(this,c); d.subTo(m,d); }
-        c.rShiftTo(1,c);
-      }
-      else if(!d.isEven()) d.subTo(m,d);
-      d.rShiftTo(1,d);
-    }
-    if(u.compareTo(v) >= 0) {
-      u.subTo(v,u);
-      if(ac) a.subTo(c,a);
-      b.subTo(d,b);
-    }
-    else {
-      v.subTo(u,v);
-      if(ac) c.subTo(a,c);
-      d.subTo(b,d);
-    }
-  }
-  if(v.compareTo(BigInteger.ONE) != 0) return BigInteger.ZERO;
-  if(d.compareTo(m) >= 0) return d.subtract(m);
-  if(d.signum() < 0) d.addTo(m,d); else return d;
-  if(d.signum() < 0) return d.add(m); else return d;
+var ac = m.isEven();
+if((this.isEven() && ac) || m.signum() == 0) return BigInteger.ZERO;
+var u = m.clone(), v = this.clone();
+var a = nbv(1), b = nbv(0), c = nbv(0), d = nbv(1);
+while(u.signum() != 0) {
+ while(u.isEven()) {
+   u.rShiftTo(1,u);
+   if(ac) {
+     if(!a.isEven() || !b.isEven()) { a.addTo(this,a); b.subTo(m,b); }
+     a.rShiftTo(1,a);
+   } else if(!b.isEven()) b.subTo(m,b);
+   b.rShiftTo(1,b);
+ }
+ while(v.isEven()) {
+   v.rShiftTo(1,v);
+   if(ac) {
+     if(!c.isEven() || !d.isEven()) { c.addTo(this,c); d.subTo(m,d); }
+     c.rShiftTo(1,c);
+   } else if(!d.isEven()) d.subTo(m,d);
+   d.rShiftTo(1,d);
+ }
+ if(u.compareTo(v) >= 0) {
+   u.subTo(v,u);
+   if(ac) a.subTo(c,a);
+   b.subTo(d,b);
+ } else {
+   v.subTo(u,v);
+   if(ac) c.subTo(a,c);
+   d.subTo(b,d);
+ }
+}
+if(v.compareTo(BigInteger.ONE) != 0) return BigInteger.ZERO;
+if(d.compareTo(m) >= 0) return d.subtract(m);
+if(d.signum() < 0) d.addTo(m,d); else return d;
+if(d.signum() < 0) return d.add(m); else return d;
 }
 
-var lowprimes = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,293,307,311,313,317,331,337,347,349,353,359,367,373,379,383,389,397,401,409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499,503,509,521,523,541,547,557,563,569,571,577,587,593,599,601,607,613,617,619,631,641,643,647,653,659,661,673,677,683,691,701,709,719,727,733,739,743,751,757,761,769,773,787,797,809,811,821,823,827,829,839,853,857,859,863,877,881,883,887,907,911,919,929,937,941,947,953,967,971,977,983,991,997];
+var lowprimes = [2,3,5,7,11,13,17,19,23,29,31,37,41,43,47,53,59,61,67,71,73,79,83,89,97,101,103,107,109,113,127,131,137,139,149,151,157,163,167,173,179,181,191,193,197,199,211,223,227,229,233,239,241,251,257,263,269,271,277,281,283,293,307,311,313,317,331,337,347,349,353,359,367,373,379,383,389,397,401,409,419,421,431,433,439,443,449,457,461,463,467,479,487,491,499,503,509];
 var lplim = (1<<26)/lowprimes[lowprimes.length-1];
 
-// (public) test primality with certainty >= 1-.5^t
+//(public) test primality with certainty >= 1-.5^t
 function bnIsProbablePrime(t) {
-  var i, x = this.abs();
-  if(x.t == 1 && x.data[0] <= lowprimes[lowprimes.length-1]) {
-    for(i = 0; i < lowprimes.length; ++i)
-      if(x.data[0] == lowprimes[i]) return true;
-    return false;
-  }
-  if(x.isEven()) return false;
-  i = 1;
-  while(i < lowprimes.length) {
-    var m = lowprimes[i], j = i+1;
-    while(j < lowprimes.length && m < lplim) m *= lowprimes[j++];
-    m = x.modInt(m);
-    while(i < j) if(m%lowprimes[i++] == 0) return false;
-  }
-  return x.millerRabin(t);
+var i, x = this.abs();
+if(x.t == 1 && x.data[0] <= lowprimes[lowprimes.length-1]) {
+ for(i = 0; i < lowprimes.length; ++i)
+   if(x.data[0] == lowprimes[i]) return true;
+ return false;
+}
+if(x.isEven()) return false;
+i = 1;
+while(i < lowprimes.length) {
+ var m = lowprimes[i], j = i+1;
+ while(j < lowprimes.length && m < lplim) m *= lowprimes[j++];
+ m = x.modInt(m);
+ while(i < j) if(m%lowprimes[i++] == 0) return false;
+}
+return x.millerRabin(t);
 }
 
-// (protected) true if probably prime (HAC 4.24, Miller-Rabin)
+//(protected) true if probably prime (HAC 4.24, Miller-Rabin)
 function bnpMillerRabin(t) {
-  var n1 = this.subtract(BigInteger.ONE);
-  var k = n1.getLowestSetBit();
-  if(k <= 0) return false;
-  var r = n1.shiftRight(k);
-  var prng = bnGetPrng();
-  var a;
-  for(var i = 0; i < t; ++i) {
-    // select witness 'a' at random from between 1 and n1
-    do {
-      a = new BigInteger(this.bitLength(), prng);
-    }
-    while(a.compareTo(BigInteger.ONE) <= 0 || a.compareTo(n1) >= 0);
-    var y = a.modPow(r,this);
-    if(y.compareTo(BigInteger.ONE) != 0 && y.compareTo(n1) != 0) {
-      var j = 1;
-      while(j++ < k && y.compareTo(n1) != 0) {
-        y = y.modPowInt(2,this);
-        if(y.compareTo(BigInteger.ONE) == 0) return false;
-      }
-      if(y.compareTo(n1) != 0) return false;
-    }
-  }
-  return true;
+var n1 = this.subtract(BigInteger.ONE);
+var k = n1.getLowestSetBit();
+if(k <= 0) return false;
+var r = n1.shiftRight(k);
+var prng = bnGetPrng();
+var a;
+for(var i = 0; i < t; ++i) {
+ // select witness 'a' at random from between 1 and n1
+ do {
+   a = new BigInteger(this.bitLength(), prng);
+ }
+ while(a.compareTo(BigInteger.ONE) <= 0 || a.compareTo(n1) >= 0);
+ var y = a.modPow(r,this);
+ if(y.compareTo(BigInteger.ONE) != 0 && y.compareTo(n1) != 0) {
+   var j = 1;
+   while(j++ < k && y.compareTo(n1) != 0) {
+     y = y.modPowInt(2,this);
+     if(y.compareTo(BigInteger.ONE) == 0) return false;
+   }
+   if(y.compareTo(n1) != 0) return false;
+ }
+}
+return true;
 }
 
 // get pseudo random number generator
@@ -7483,7 +7368,7 @@ function bnGetPrng() {
   };
 }
 
-// protected
+//protected
 BigInteger.prototype.chunkSize = bnpChunkSize;
 BigInteger.prototype.toRadix = bnpToRadix;
 BigInteger.prototype.fromRadix = bnpFromRadix;
@@ -7498,7 +7383,7 @@ BigInteger.prototype.multiplyUpperTo = bnpMultiplyUpperTo;
 BigInteger.prototype.modInt = bnpModInt;
 BigInteger.prototype.millerRabin = bnpMillerRabin;
 
-// public
+//public
 BigInteger.prototype.clone = bnClone;
 BigInteger.prototype.intValue = bnIntValue;
 BigInteger.prototype.byteValue = bnByteValue;
@@ -7533,17 +7418,14 @@ BigInteger.prototype.pow = bnPow;
 BigInteger.prototype.gcd = bnGCD;
 BigInteger.prototype.isProbablePrime = bnIsProbablePrime;
 
-// JSBN-specific extension
-BigInteger.prototype.square = bnSquare;
+//BigInteger interfaces not implemented in jsbn:
 
-// BigInteger interfaces not implemented in jsbn:
-
-// BigInteger(int signum, byte[] magnitude)
-// double doubleValue()
-// float floatValue()
-// int hashCode()
-// long longValue()
-// static BigInteger valueOf(long val)
+//BigInteger(int signum, byte[] magnitude)
+//double doubleValue()
+//float floatValue()
+//int hashCode()
+//long longValue()
+//static BigInteger valueOf(long val)
 
 
 /***/ }),
@@ -8594,7 +8476,6 @@ _IN('2.5.4.13', 'description');
 _IN('2.5.4.15', 'businessCategory');
 _IN('2.5.4.17', 'postalCode');
 _IN('2.5.4.42', 'givenName');
-_IN('2.5.4.65', 'pseudonym');
 _IN('1.3.6.1.4.1.311.60.2.1.2', 'jurisdictionOfIncorporationStateOrProvinceName');
 _IN('1.3.6.1.4.1.311.60.2.1.3', 'jurisdictionOfIncorporationCountryName');
 
@@ -9330,7 +9211,7 @@ pki.pbe.generatePkcs12Key = function(password, salt, id, iter, n, md) {
   D.fillWithByte(id, v);
 
   /* 2. Concatenate copies of the salt together to create a string S of length
-        v * ceil(s / v) bytes (the final copy of the salt may be truncated
+        v * ceil(s / v) bytes (the final copy of the salt may be trunacted
         to create S).
         Note that if the salt is the empty string, then so is S. */
   var Slen = v * Math.ceil(s / v);
@@ -10601,7 +10482,6 @@ var pfxValidator = {
           capture: 'macAlgorithm'
         }, {
           name: 'PFX.macData.mac.digestAlgorithm.parameters',
-          optional: true,
           tagClass: asn1.Class.UNIVERSAL,
           captureAsn1: 'macAlgorithmParameters'
         }]
@@ -10908,9 +10788,6 @@ p12.pkcs12FromAsn1 = function(obj, strict, password) {
     if(macValue.getBytes() !== capture.macDigest) {
       throw new Error('PKCS#12 MAC could not be verified. Invalid password?');
     }
-  } else if(Array.isArray(obj.value) && obj.value.length > 2) {
-    /* This is pfx data that should have mac and verify macDigest */
-    throw new Error('Invalid PKCS#12. macData field present but MAC was not validated.');
   }
 
   _decodeAuthenticatedSafe(pfx, data.value, strict, password);
@@ -15186,7 +15063,7 @@ var digestInfoValidator = {
       constructed: false,
       capture: 'algorithmIdentifier'
     }, {
-      // NULL parameters
+      // NULL paramters
       name: 'DigestInfo.DigestAlgorithm.parameters',
       tagClass: asn1.Class.UNIVERSAL,
       type: asn1.Type.NULL,
@@ -15220,7 +15097,7 @@ var digestInfoValidator = {
  *
  * @param md the message digest object with the hash to sign.
  *
- * @return the encoded message (ready for RSA encryption)
+ * @return the encoded message (ready for RSA encrytion)
  */
 var emsaPkcs1v15encode = function(md) {
   // get the oid for the algorithm
@@ -15402,7 +15279,7 @@ var _modPow = function(x, key, pub) {
  *
  * The parameter bt controls whether to put padding bytes before the
  * message passed in. Set bt to either true or false to disable padding
- * completely (in order to handle e.g. EMSA-PSS encoding separately before),
+ * completely (in order to handle e.g. EMSA-PSS encoding seperately before),
  * signaling whether the encryption operation is a public key operation
  * (i.e. encrypting data) or not, i.e. private key operation (data signing).
  *
@@ -16037,9 +15914,6 @@ pki.setRsaPublicKey = pki.rsa.setPublicKey = function(n, e) {
    *          _parseAllDigestBytes testing flag to control parsing of all
    *            digest bytes. Unsupported and not for general usage.
    *            (default: true)
-   *          _skipPaddingChecks testing flag to skip some padding checks to
-   *            test other checks. Unsupported and not for general usage.
-   *            (default: false)
    *
    * @return true if the signature was verified, false if not.
    */
@@ -16051,32 +15925,27 @@ pki.setRsaPublicKey = pki.rsa.setPublicKey = function(n, e) {
     }
     if(options === undefined) {
       options = {
-        _parseAllDigestBytes: true,
-        _skipPaddingChecks: false
+        _parseAllDigestBytes: true
       };
     }
     if(!('_parseAllDigestBytes' in options)) {
       options._parseAllDigestBytes = true;
-    }
-    if(!('_skipPaddingChecks' in options)) {
-      options._skipPaddingChecks = false;
     }
 
     if(scheme === 'RSASSA-PKCS1-V1_5') {
       scheme = {
         verify: function(digest, d) {
           // remove padding
-          d = _decodePkcs1_v1_5(d, key, true, undefined, options);
+          d = _decodePkcs1_v1_5(d, key, true);
           // d is ASN.1 BER-encoded DigestInfo
           var obj = asn1.fromDer(d, {
             parseAllBytes: options._parseAllDigestBytes
           });
 
-          // validate DigestInfo structure and element count
+          // validate DigestInfo
           var capture = {};
           var errors = [];
-          if(!asn1.validate(obj, digestInfoValidator, capture, errors) ||
-            obj.value.length !== 2) {
+          if(!asn1.validate(obj, digestInfoValidator, capture, errors)) {
             var error = new Error(
               'ASN.1 object does not contain a valid RSASSA-PKCS1-v1_5 ' +
               'DigestInfo value.');
@@ -16085,7 +15954,7 @@ pki.setRsaPublicKey = pki.rsa.setPublicKey = function(n, e) {
           }
           // check hash algorithm identifier
           // see PKCS1-v1-5DigestAlgorithms in RFC 8017
-          // FIXME: add support to validator for strict value choices
+          // FIXME: add support to vaidator for strict value choices
           var oid = asn1.derToOid(capture.algorithmIdentifier);
           if(!(oid === forge.oids.md2 ||
             oid === forge.oids.md5 ||
@@ -16108,7 +15977,7 @@ pki.setRsaPublicKey = pki.rsa.setPublicKey = function(n, e) {
               throw new Error(
                 'ASN.1 object does not contain a valid RSASSA-PKCS1-v1_5 ' +
                 'DigestInfo value. ' +
-                'Missing algorithm identifier NULL parameters.');
+                'Missing algorithm identifer NULL parameters.');
             }
           }
 
@@ -16120,7 +15989,7 @@ pki.setRsaPublicKey = pki.rsa.setPublicKey = function(n, e) {
       scheme = {
         verify: function(digest, d) {
           // remove padding
-          d = _decodePkcs1_v1_5(d, key, true, undefined, options);
+          d = _decodePkcs1_v1_5(d, key, true);
           return digest === d;
         }
       };
@@ -16538,11 +16407,10 @@ function _encodePkcs1_v1_5(m, key, bt) {
  * @param key the RSA key to use.
  * @param pub true if the key is a public key, false if it is private.
  * @param ml the message length, if specified.
- * @param options testing options.
  *
  * @return the decoded bytes.
  */
-function _decodePkcs1_v1_5(em, key, pub, ml, options) {
+function _decodePkcs1_v1_5(em, key, pub, ml) {
   // get the length of the modulus in bytes
   var k = Math.ceil(key.n.bitLength() / 8);
 
@@ -16550,7 +16418,7 @@ function _decodePkcs1_v1_5(em, key, pub, ml, options) {
 
     1. The encryption block EB cannot be parsed unambiguously.
     2. The padding string PS consists of fewer than eight octets
-      or is inconsistent with the block type BT.
+      or is inconsisent with the block type BT.
     3. The decryption process is a public-key operation and the block
       type BT is not 00 or 01, or the decryption process is a
       private-key operation and the block type is not 02.
@@ -16562,7 +16430,7 @@ function _decodePkcs1_v1_5(em, key, pub, ml, options) {
   var bt = eb.getByte();
   if(first !== 0x00 ||
     (pub && bt !== 0x00 && bt !== 0x01) ||
-    (!pub && bt !== 0x02) ||
+    (!pub && bt != 0x02) ||
     (pub && bt === 0x00 && typeof(ml) === 'undefined')) {
     throw new Error('Encryption block is invalid.');
   }
@@ -16586,11 +16454,6 @@ function _decodePkcs1_v1_5(em, key, pub, ml, options) {
       }
       ++padNum;
     }
-
-    // RFC 2313 8.1 note 6
-    if(padNum < 8 && !(options ? options._skipPaddingChecks : false)) {
-      throw new Error('Encryption block is invalid.');
-    }
   } else if(bt === 0x02) {
     // look for 0x00 byte
     padNum = 0;
@@ -16600,11 +16463,6 @@ function _decodePkcs1_v1_5(em, key, pub, ml, options) {
         break;
       }
       ++padNum;
-    }
-
-    // RFC 2313 8.1 note 6
-    if(padNum < 8 && !(options ? options._skipPaddingChecks : false)) {
-      throw new Error('Encryption block is invalid.');
     }
   }
 
@@ -19108,7 +18966,7 @@ tls.handleUnexpected = function(c, record) {
  */
 tls.handleHelloRequest = function(c, record, length) {
   // ignore renegotiation requests from the server during a handshake, but
-  // if handshaking, send a warning alert that renegotiation is denied
+  // if handshaking, send a warning alert that renegotation is denied
   if(!c.handshaking && c.handshakes > 0) {
     // send alert warning
     tls.queue(c, tls.createAlert(c, {
@@ -20608,7 +20466,7 @@ hsTable[tls.ConnectionEnd.client] = [
 ];
 
 // map server current expect state and handshake type to function
-// Note: CAD[CH] does not map to FB because renegotiation is prohibited
+// Note: CAD[CH] does not map to FB because renegotation is prohibited
 var H7 = tls.handleClientHello;
 var H8 = tls.handleClientKeyExchange;
 var H9 = tls.handleCertificateVerify;
@@ -23316,7 +23174,7 @@ util.ByteStringBuffer.prototype.clear = function() {
 };
 
 /**
- * Shortens this buffer by trimming bytes off of the end of this buffer.
+ * Shortens this buffer by triming bytes off of the end of this buffer.
  *
  * @param count the number of bytes to trim off.
  *
@@ -23982,7 +23840,7 @@ util.DataBuffer.prototype.clear = function() {
 };
 
 /**
- * Shortens this buffer by trimming bytes off of the end of this buffer.
+ * Shortens this buffer by triming bytes off of the end of this buffer.
  *
  * @param count the number of bytes to trim off.
  *
@@ -24955,7 +24813,7 @@ util.format = function(format) {
         parts.push('<?>');
       }
       break;
-    // FIXME: do proper formatting for numbers, etc
+    // FIXME: do proper formating for numbers, etc
     //case 'f':
     //case 'd':
     case '%':
@@ -27587,7 +27445,7 @@ function _fillMissingExtensionFields(e, options) {
  * Convert signature parameters object to ASN.1
  *
  * @param {String} oid Signature algorithm OID
- * @param params The signature parameters object
+ * @param params The signature parametrs object
  * @return ASN.1 object representing signature parameters
  */
 function _signatureParametersToAsn1(oid, params) {
@@ -28464,15 +28322,6 @@ pki.verifyCertificateChain = function(caStore, chain, options) {
             error: pki.certificateError.bad_certificate
           };
         }
-      }
-      // check for absent basicConstraints on non-leaf certificates
-      if(error === null && bcExt === null) {
-        error = {
-          message:
-            'Certificate is missing basicConstraints extension and cannot ' +
-            'be used as a CA.',
-          error: pki.certificateError.bad_certificate
-        };
       }
       // basic constraints cA flag must be set
       if(error === null && bcExt !== null && !bcExt.cA) {
