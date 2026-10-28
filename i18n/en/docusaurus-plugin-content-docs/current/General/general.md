@@ -115,10 +115,11 @@ Requires Loon 3.2.3 (754) or later.
 
 | Value | Behavior |
 |---|---|
-| `ipv4-only` | Use IPv4 only, do not query AAAA records, and reject IPv6 connections |
+| `v4-only` | Use IPv4 only, do not query AAAA records, and reject IPv6 connections |
 | `dual` | Query A and AAAA records concurrently and use the first result |
-| `ipv4-preferred` | Prefer IPv4 and use IPv6 when no A record exists |
-| `ipv6-preferred` | Prefer IPv6 and use IPv4 when no AAAA record exists |
+| `prefer-v4` | Prefer IPv4 and use IPv6 when no A record exists |
+| `prefer-v6` | Prefer IPv6 and use IPv4 when no AAAA record exists |
+| `v6-only` | Use IPv6 only, do not query A records, and reject IPv4 connections |
 
 ```ini
 ip-mode = dual
@@ -221,13 +222,13 @@ Choose the network interface used for traffic:
 
 | Value | Behavior |
 |---|---|
-| `Auto` | Let the system choose automatically |
-| `Cellular` | Use cellular when both Wi-Fi and cellular are available |
-| `Performace` | Use the currently best-performing interface |
-| `Balance` | Balance traffic across available interfaces |
+| `auto` | Let the system choose automatically |
+| `cellular` | Use cellular when both Wi-Fi and cellular are available |
+| `performance` | Use the currently best-performing interface |
+| `balance` | Balance traffic across available interfaces |
 
 ```ini
-interface-mode = Performace
+interface-mode = performance
 ```
 
 ## Fake IP

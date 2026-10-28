@@ -24,7 +24,7 @@ example.com = example.com.cn
 *.apple.com = server:system
 ssid:LOON's WIFI = server:system
 ssid:LOON WIFI = server:https://example.com/dns-query
-example.com = ip-mode:ipv4-only
+example.com = ip-mode:v4-only
 ```
 
-`ip-mode` 支持 `ipv4-only`、`dual`、`ipv4-preferred` 和 `ipv6-preferred`，详见 [通用配置](../General/general.md)。
+`ip-mode` 支持 `v4-only`、`dual`、`prefer-v4`、`prefer-v6` 和 `v6-only`，详见 [通用配置](../General/general.md)。

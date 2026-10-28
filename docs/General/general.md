@@ -115,10 +115,11 @@ hijack-dns = *:53,8.8.8.8
 
 | 值 | 行为 |
 |---|---|
-| `ipv4-only` | 仅使用 IPv4，不查询 AAAA，并拒绝 IPv6 连接 |
+| `v4-only` | 仅使用 IPv4，不查询 AAAA，并拒绝 IPv6 连接 |
 | `dual` | 并发查询 A 和 AAAA，使用最先返回的结果 |
-| `ipv4-preferred` | 优先使用 IPv4，没有 A 记录时使用 IPv6 |
-| `ipv6-preferred` | 优先使用 IPv6，没有 AAAA 记录时使用 IPv4 |
+| `prefer-v4` | 优先使用 IPv4，没有 A 记录时使用 IPv6 |
+| `prefer-v6` | 优先使用 IPv6，没有 AAAA 记录时使用 IPv4 |
+| `v6-only` | 仅使用 IPv6，不查询 A，并拒绝 IPv4 连接 |
 
 ```ini
 ip-mode = dual
@@ -221,13 +222,13 @@ ssid-trigger = "loon-wifi5g":DIRECT,"cellular":PROXY,"default":RULE
 
 | 值 | 行为 |
 |---|---|
-| `Auto` | 由系统自动选择 |
-| `Cellular` | Wi-Fi 和蜂窝网络同时可用时使用蜂窝网络 |
-| `Performace` | 使用当前表现最好的网络接口 |
-| `Balance` | 均衡使用可用网络接口 |
+| `auto` | 由系统自动选择 |
+| `cellular` | Wi-Fi 和蜂窝网络同时可用时使用蜂窝网络 |
+| `performance` | 使用当前表现最好的网络接口 |
+| `balance` | 均衡使用可用网络接口 |
 
 ```ini
-interface-mode = Performace
+interface-mode = performance
 ```
 
 ## Fake IP

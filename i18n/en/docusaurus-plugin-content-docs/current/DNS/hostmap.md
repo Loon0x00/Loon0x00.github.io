@@ -24,7 +24,7 @@ example.com = example.com.cn
 *.apple.com = server:system
 ssid:LOON's WIFI = server:system
 ssid:LOON WIFI = server:https://example.com/dns-query
-example.com = ip-mode:ipv4-only
+example.com = ip-mode:v4-only
 ```
 
-`ip-mode` supports `ipv4-only`, `dual`, `ipv4-preferred`, and `ipv6-preferred`. See [General Configuration](../General/general.md).
+`ip-mode` supports `v4-only`, `dual`, `prefer-v4`, `prefer-v6`, and `v6-only`. See [General Configuration](../General/general.md).
