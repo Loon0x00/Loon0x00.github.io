@@ -14,6 +14,7 @@ A plugin is a reusable partial configuration that can contain General options, I
 #!author = Loon
 #!homepage = https://example.com
 #!icon = https://example.com/icon.png
+#!source = c092d3b95bc93b6248e5a192fd765884dd80a787ec37a178b57fcd4decc0cc1d
 #!system = iOS,iPadOS,tvOS,macOS
 #!system_version = 15
 #!loon_version = 3.5.1(983)
@@ -58,12 +59,56 @@ Fields beginning with `#!` describe the plugin:
 | `#!author` | Author |
 | `#!homepage` | Homepage URL |
 | `#!icon` | Icon URL |
+| `#!source` | SHA-256 of an author-specified download URL; separate multiple values with commas, and any matching value is accepted |
 | `#!system` | Supported systems, case-insensitive; omit to support all systems |
 | `#!system_version` | Minimum system version, such as `15.0` |
 | `#!loon_version` | Minimum Loon version, such as `3.5.1(978)` |
 | `#!date` | Plugin version date, such as `2026-10-09`; the value is displayed as written |
 | `#!tag` | Category tags |
 | `#!type` | Plugin type: `normal` or `parser`; defaults to `normal` when omitted |
+
+### `#!source` download URL verification
+
+`#!source` declares the SHA-256 of a download URL specified by the plugin author. When a plugin is first installed over the network, Loon calculates the SHA-256 of the complete URL entered and saved by the user and compares it with this field. The same verification rules apply to standard and encrypted plugins.
+
+For example, suppose the specified download URL is:
+
+```text
+https://example.com/plugin.lpx
+```
+
+Calculate its SHA-256 in a terminal. `printf` does not append a newline to the URL:
+
+```bash
+printf '%s' 'https://example.com/plugin.lpx' | shasum -a 256
+```
+
+The result is:
+
+```text
+c092d3b95bc93b6248e5a192fd765884dd80a787ec37a178b57fcd4decc0cc1d
+```
+
+Add it to the plugin:
+
+```ini
+#!source = c092d3b95bc93b6248e5a192fd765884dd80a787ec37a178b57fcd4decc0cc1d
+```
+
+If the plugin also has the author-specified download URL `https://mirror.example.com/plugin.lpx`, calculate the SHA-256 of both URLs and separate the values with commas. Loon trims whitespace around each value and accepts the declaration when any value matches:
+
+```ini
+#!source = c092d3b95bc93b6248e5a192fd765884dd80a787ec37a178b57fcd4decc0cc1d, 234992c8a27b05d53b55b1459e5bc510e6caeacd643e5ba819238094297ed94a
+```
+
+The hash is calculated from the URL actually entered by the user. The scheme, host, port, path, and query parameters are all part of the URL. Loon does not compare against the URL after HTTP redirects and does not remove or modify query parameters. These two URLs therefore have different SHA-256 values:
+
+```text
+https://example.com/plugin.lpx
+https://example.com/plugin.lpx?raw=true
+```
+
+`#!source` helps users notice whether the current download URL was specified by the plugin author. It is not a digital signature and cannot by itself prove the author's identity or that the plugin content has not been modified.
 
 Loon 3.5.0 (969) supports these plugin types:
 

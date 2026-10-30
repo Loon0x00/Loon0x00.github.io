@@ -14,6 +14,7 @@ sidebar_position: 1
 #!author = Loon
 #!homepage = https://example.com
 #!icon = https://example.com/icon.png
+#!source = c092d3b95bc93b6248e5a192fd765884dd80a787ec37a178b57fcd4decc0cc1d
 #!system = iOS,iPadOS,tvOS,macOS
 #!system_version = 15
 #!loon_version = 3.5.1(983)
@@ -58,12 +59,56 @@ hostname = example.com
 | `#!author` | 作者 |
 | `#!homepage` | 主页地址 |
 | `#!icon` | 图标地址 |
+| `#!source` | 插件作者指定下载地址的 SHA-256；多个值使用英文逗号分隔，任意一个匹配即可 |
 | `#!system` | 支持的系统，不区分大小写；未填写表示全部支持 |
 | `#!system_version` | 最低系统版本，如 `15.0` |
 | `#!loon_version` | 最低 Loon 版本，如 `3.5.1(978)` |
 | `#!date` | 插件版本日期，如 `2026-10-09`；该值会按原样显示 |
 | `#!tag` | 分类标签 |
 | `#!type` | 插件类型，支持 `normal`、`parser`；未填写时默认为 `normal` |
+
+### `#!source` 下载地址校验
+
+`#!source` 用于声明插件作者指定下载地址的 SHA-256。Loon 通过网络首次安装插件时，会对用户实际填写并保存的完整 URL 字符串计算 SHA-256，并与该字段比较。普通插件和加密插件使用相同的校验规则。
+
+例如，插件的指定下载地址是：
+
+```text
+https://example.com/plugin.lpx
+```
+
+可以在终端中计算 SHA-256。`printf` 不会在 URL 末尾添加换行符：
+
+```bash
+printf '%s' 'https://example.com/plugin.lpx' | shasum -a 256
+```
+
+得到：
+
+```text
+c092d3b95bc93b6248e5a192fd765884dd80a787ec37a178b57fcd4decc0cc1d
+```
+
+写入插件：
+
+```ini
+#!source = c092d3b95bc93b6248e5a192fd765884dd80a787ec37a178b57fcd4decc0cc1d
+```
+
+如果插件还有一个作者指定的下载地址 `https://mirror.example.com/plugin.lpx`，将两个地址分别计算 SHA-256，再使用英文逗号分隔。Loon 会逐项忽略首尾空格，只要任意一项匹配就通过校验：
+
+```ini
+#!source = c092d3b95bc93b6248e5a192fd765884dd80a787ec37a178b57fcd4decc0cc1d, 234992c8a27b05d53b55b1459e5bc510e6caeacd643e5ba819238094297ed94a
+```
+
+计算时使用用户实际填写的 URL，协议、域名、端口、路径和查询参数都属于 URL 内容。Loon 不使用 HTTP 重定向后的地址进行比较，也不会自动删除或修改查询参数。因此，下面两个地址会得到不同的 SHA-256：
+
+```text
+https://example.com/plugin.lpx
+https://example.com/plugin.lpx?raw=true
+```
+
+`#!source` 用于帮助用户发现当前下载地址是否为插件作者指定地址，不是数字签名，不能单独证明插件作者身份或插件内容未被修改。
 
 Loon 3.5.0 (969) 支持以下插件类型：
 
