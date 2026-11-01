@@ -117,10 +117,6 @@ const config = {
                 label: '插件转换器',
               },
               {
-                to: '/plugin-encryptor',
-                label: '插件加密工具',
-              },
-              {
                 to: '/rewrite-builder',
                 label: 'Rewrite 编辑器',
               },
