@@ -78,6 +78,15 @@ const config = {
           // Please change this to your repo.
           // Remove this to remove the "edit this page" links.
         },
+        pages: {
+          exclude: [
+            '**/_*.{js,jsx,ts,tsx,md,mdx}',
+            '**/_*/**',
+            '**/*.test.{js,jsx,ts,tsx}',
+            '**/__tests__/**',
+            '**/plugin-encryptor.js',
+          ],
+        },
         theme: {
           customCss: './src/css/custom.css',
         },
