@@ -275,6 +275,67 @@ WireGuard = WireGuard,interface-ip=192.168.2.2,interface-ipv6=2001:db8:1::2,priv
 
 An IPv6 endpoint must use the format `[IPv6 address]:port`.
 
+## Tailscale
+
+A Tailscale node joins your Tailscale network (tailnet) and forwards TCP and UDP through devices in that network. Device addresses and peer connection information are provided by the control server, so you do not need to configure a server address, port, or WireGuard peer manually.
+
+Format:
+
+```ini
+Node name = tailscale,optional arguments
+```
+
+Browser authorization example:
+
+```ini
+Tailscale = tailscale,hostname=loon-iphone
+```
+
+When `auth-key` is omitted, the node obtains a browser authorization URL the first time it is used. After enabling the VPN, send a request through this node. iOS or macOS displays an authorization notification; tap it to open the browser and sign in. Make sure notifications are enabled for Loon. While the VPN is connected, you can also use the **Log In** action on the node page. Loon saves the identity after authorization and reuses it for subsequent connections.
+
+Using an Auth Key and specifying an exit node:
+
+```ini
+Tailscale-Exit = tailscale,auth-key="tskey-auth-replace-with-your-key",hostname=loon-iphone,exit-node=100.101.102.103
+```
+
+Set `exit-node` to `auto` to randomly select from the available exit nodes. When device information is refreshed, Loon keeps the current selection as long as it remains available.
+
+Full argument example:
+
+```ini
+Tailscale = tailscale,control-url="https://controlplane.tailscale.com",auth-key="tskey-auth-replace-with-your-key",hostname=loon-iphone,exit-node=auto,accept-routes=true,accept-dns=true,magic-dns=true,path-mode=auto,mtu=1280,idle-session-timeout=300,ip-mode=prefer-v4,server-dns="223.5.5.5,https://dns.example.com/dns-query",udp=true,block-quic=true
+```
+
+| Argument | Default | Description |
+|---|---|---|
+| `auth-key` | Omitted | Auth Key used to register the device. A valid key normally avoids browser sign-in; omit this argument to use browser authorization. Enter the key itself here, not a browser authorization URL |
+| `control-url` | `https://controlplane.tailscale.com` | Control server URL. This argument can be omitted; specify the corresponding HTTP or HTTPS URL when using a custom control server |
+| `hostname` | Automatically generated | Device name used after this device joins the Tailscale network; this is distinct from the node name in Loon |
+| `exit-node` | `none` | Device used as the Internet exit. `none` disables exit-node routing; `auto` selects one automatically. You can also specify a device name, full MagicDNS name, or Tailscale IP address |
+| `accept-routes` | `true` | Use subnet routes advertised by devices. This allows access to other devices on their local networks, such as reaching a NAS through a Mac at home |
+| `accept-dns` | `true` | Accept DNS servers, split-DNS rules, and search domains provided by Tailscale. When using an exit node, Loon selects DNS according to the provided settings or sends queries through the exit node. When disabled, ordinary public domains use Loon's existing DNS flow, while device MagicDNS names can still be resolved from downloaded device information |
+| `magic-dns` | `true` | Automatically add routing rules for full MagicDNS names and device IP addresses from device information. When MagicDNS is enabled for the tailnet, Loon also adds a rule for its domain suffix. Matching requests use this node independently of `accept-dns` |
+| `path-mode` | `auto` | `auto` selects the path automatically, attempting a direct P2P connection and using a DERP relay when necessary; `derp` uses DERP relays only |
+| `mtu` | `1280` | MTU of the inner IP packet. Values from `576` through `1280` are allowed; values below `1280` require `ip-mode=v4-only` |
+| `idle-session-timeout` | `300` | Session idle timeout, in seconds, after all traffic connections have closed. Enter a non-negative integer; `0` disables idle shutdown. The node reconnects the next time it is used, while the saved identity is retained |
+| `ip-mode` | Unspecified | Address-family policy: `v4-only`, `dual`, `prefer-v4`, `prefer-v6`, or `v6-only`. This affects the IPv4 or IPv6 addresses used for domain resolution and destination connections |
+| `server-dns` | Not set | DNS used to resolve domain names in control-server, relay-server, and similar connection addresses. See [Node DNS](#node-dns) for the format. This does not replace DNS settings provided by Tailscale |
+| `udp` | `true` | Whether to forward application UDP traffic. This is not a P2P switch; set `path-mode=derp` to use relays only |
+| `block-quic` | `true` | Whether to block QUIC. Set this to `false` and keep `udp=true` when QUIC must be forwarded through the node |
+
+`accept-dns` determines how domain names are resolved, while `magic-dns` determines which node forwards traffic for device names and IP addresses. For example, automatically routing `nas.example.ts.net` through this Tailscale node does not mean that all public-domain DNS queries are sent through the node.
+
+Automatic rules are saved after the device first joins the tailnet and refreshed on subsequent connections. Saved rules can also be loaded after the VPN restarts. Automatic `magic-dns` routing applies in rule mode.
+
+:::note
+
+- `exit-node` identifies the device that receives and forwards traffic; it does not advertise the current Loon device as an exit node. The selected device must have exit-node functionality enabled and be approved for use in the control panel.
+- The default, `exit-node=none`, provides access to Tailscale devices and accepted subnets. To reach ordinary Internet addresses through this node, specify an available exit node.
+- Loon's rules or global mode still determine whether ordinary requests use this node. `accept-routes=true` only permits the use of subnet routes; it does not automatically add the entire remote LAN to Loon's routing rules.
+
+:::
+
 ## Hysteria 2
 
 Format:
