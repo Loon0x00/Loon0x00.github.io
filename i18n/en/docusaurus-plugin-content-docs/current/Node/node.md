@@ -200,7 +200,7 @@ With Reality arguments:
 VMess-Reality = VMess,vmess.example.com,443,auto,"52396e06-041a-4cc2-be5c-8525eb457809",transport=tcp,alterId=0,public-key="LgJ9bNTyUqBLFkDA12-QgEL7c1yQ1ztk-V1Q-3OLXSk",short-id=164168844958a16d,over-tls=true,sni=www.example.com,tls-profile=chrome,udp=true,block-quic=false,ip-mode=prefer-v4,server-dns="223.5.5.5,h3://dns.example.com/dns-query"
 ```
 
-`transport` supports `tcp`, `ws`, and `http`. `host` and `path` apply to WebSocket or HTTP transports. Supported encryption methods are `none`, `auto`, `aes-128-cfb`, `aes-128-gcm`, and `chacha20-ietf-poly1305`.
+`transport` supports `tcp`, `ws`, `http`, and `xhttp`. `host` and `path` apply to WebSocket, HTTP, and XHTTP transports. Supported encryption methods are `none`, `auto`, `aes-128-cfb`, `aes-128-gcm`, and `chacha20-ietf-poly1305`. See [XHTTP](#xhttp) for XHTTP configuration.
 
 ## VLESS
 
@@ -228,7 +228,7 @@ ShadowTLS example:
 VLESS-ShadowTLS = VLESS,vless.example.com,443,"52396e06-041a-4cc2-be5c-8525eb457809",transport=tcp,over-tls=false,shadow-tls-password=shadow-password,shadow-tls-sni=www.example.com,shadow-tls-version=3,udp=true,block-quic=false,ip-mode=prefer-v4,server-dns="223.5.5.5,quic://dns.example.com"
 ```
 
-`transport` supports `tcp`, `ws`, and `http`. `flow` currently supports `xtls-rprx-vision`.
+`transport` supports `tcp`, `ws`, `http`, and `xhttp`. `flow` currently supports `xtls-rprx-vision`. See [XHTTP](#xhttp) for XHTTP configuration.
 
 ## Trojan
 
@@ -250,7 +250,92 @@ Reality argument example:
 Trojan-Reality = Trojan,trojan.example.com,443,"password",transport=tcp,public-key="LgJ9bNTyUqBLFkDA12-QgEL7c1yQ1ztk-V1Q-3OLXSk",short-id=164168844958a16d,sni=www.example.com,tls-profile=chrome,alpn=h2,fast-open=true,udp=true,block-quic=false,ip-mode=prefer-v4,server-dns="223.5.5.5,h3://dns.example.com/dns-query"
 ```
 
-`transport` supports `tcp` and `ws`. For compatibility, `transport=http` is handled as WebSocket. The legacy arguments `ws=true`, `ws-path`, and `ws-headers=Host:domain` correspond to `transport=ws`, `path`, and `host`, respectively.
+`transport` supports `tcp`, `ws`, and `xhttp`. For compatibility, `transport=http` is handled as WebSocket. The legacy arguments `ws=true`, `ws-path`, and `ws-headers=Host:domain` correspond to `transport=ws`, `path`, and `host`, respectively. See [XHTTP](#xhttp) for XHTTP configuration.
+
+## XHTTP
+
+XHTTP is a transport for VLESS, VMess, and Trojan. All three protocols can forward TCP over HTTP/1.1 or HTTP/2. With `udp=true`, they can also carry UDP datagrams over the same transport. VLESS nodes omit `flow`, VMess uses AEAD with `alterId=0`, and Trojan uses TLS or REALITY.
+
+```ini
+[Proxy]
+VLESS-XHTTP = VLESS,vless.example.com,443,"52396e06-041a-4cc2-be5c-8525eb457809",transport=xhttp,path=/xhttp,host=vless.example.com,over-tls=true,sni=vless.example.com,alpn=h2,xhttp-mode=packet-up,udp=true
+VMess-XHTTP = VMess,vmess.example.com,443,aes-128-gcm,"52396e06-041a-4cc2-be5c-8525eb457809",alterId=0,transport=xhttp,path=/xhttp,host=vmess.example.com,over-tls=true,sni=vmess.example.com,alpn=http/1.1,xhttp-mode=stream-up,udp=true
+Trojan-XHTTP = Trojan,trojan.example.com,443,"password",transport=xhttp,path=/xhttp,host=trojan.example.com,sni=trojan.example.com,alpn=h2,xhttp-mode=stream-one,udp=true
+```
+
+### Basic Arguments
+
+| Argument | Description |
+|---|---|
+| `transport=xhttp` | Use XHTTP. The server address, port, and authentication arguments retain the existing format of each protocol |
+| `path` | Base path for XHTTP requests. Defaults to `/` and may contain query arguments. It must match the server configuration |
+| `host` | Host for HTTP requests; this maps to `:authority` in HTTP/2. When omitted, Loon uses `sni` first and then the node server address |
+| `over-tls` | VLESS and VMess can use `true` for standard TLS or `false` for plaintext HTTP/1.1. Trojan uses TLS by default |
+| `alpn` | Set `http/1.1` or `h2` to select the HTTP version. When omitted, standard TLS and REALITY use `h2`, while plaintext uses `http/1.1`. HTTP/2 requires standard TLS or REALITY |
+| `xhttp-mode` | Supports `auto`, `packet-up`, `stream-up`, and `stream-one`; defaults to `auto` |
+| `public-key`, `short-id`, `sni` | For REALITY, specify the server public key, Short ID, and server name. `alpn` may be omitted or set to `h2` |
+| `udp` | Set to `true` to allow the XHTTP node to forward UDP |
+
+For standard TLS certificate verification, certificate or public-key fingerprints, and `tls-profile`, see [Common Arguments](#common-arguments).
+
+### Transport Modes
+
+HTTP/1.1 and HTTP/2 both support three explicit modes. The mode must match the server configuration.
+
+| Mode | Uplink and downlink organization |
+|---|---|
+| `packet-up` | The downlink uses a persistent GET. Uplink data is split into multiple sequenced HTTP requests |
+| `stream-up` | The downlink uses a persistent GET and the uplink uses one persistent request. Both requests use the same session ID |
+| `stream-one` | The request body and response body of one persistent request carry the uplink and downlink, respectively |
+| `auto` | Selects `packet-up` for standard TLS or plaintext, and `stream-one` for REALITY |
+
+### Advanced Arguments
+
+The following advanced arguments apply to HTTP/1.1 and HTTP/2. Their effective scope depends on the mode actually used by the node. Arguments retain the `key=value` format and can be combined on a node line as needed.
+
+#### Uplink and Packetization
+
+| Argument | Scope | Usage and default |
+|---|---|---|
+| `xhttp-uplink-method` | Uplink requests in all three modes. `GET` applies only to `packet-up` | Defaults to `POST`; other HTTP methods such as `PUT` are also supported. A separate downlink request still uses `GET` |
+| `xhttp-min-post-interval-ms` | Interval between consecutive `packet-up` uplink requests only | In milliseconds; defaults to `30`. Accepts a single value or a closed range such as `30-60`. `0` adds no extra delay |
+| `xhttp-max-post-bytes` | Each `packet-up` uplink request only | Limits the raw data size of one packet in bytes; defaults to `524288`. Accepts a single value or a closed range. `0` uses the default limit. Data placed in a header or Cookie is also constrained by header capacity |
+| `xhttp-uplink-data-placement` | Uplink requests. `header` and `cookie` apply only to `packet-up` | Defaults to `body`. Both `auto` and `body` use the HTTP body. `header` or `cookie` places encoded uplink data in request headers or a Cookie |
+| `xhttp-uplink-data-key` | `packet-up` only, when data is placed in a `header` or `cookie` | Data field-name prefix. Defaults to `X-Data` for request headers and `x_data` for Cookies |
+| `xhttp-uplink-chunk-size` | `packet-up` only, when data is placed in a `header` or `cookie` | Number of characters per Base64URL-encoded chunk; accepts a single value or a closed range. Defaults to `3000-4000` for request headers and `2048-3072` for Cookies. Values below `64` are treated as `64`; the final chunk may be shorter |
+
+#### Padding
+
+All three modes add padding to every HTTP request. By default, repeated `X` characters are placed in the `x_padding` query argument of the URL contained in `Referer`. When custom padding is enabled, its placement, field name, and generation method must match the server configuration.
+
+| Argument | Scope | Usage and default |
+|---|---|---|
+| `xhttp-padding-bytes` | Every request in all three modes | Defaults to `100-1000`. Accepts a single value or a closed range, selected independently for each request. `0` uses the default range |
+| `xhttp-padding-obfs-mode` | Every request in all three modes | Defaults to `false`. Set to `true` to enable the custom padding arguments below |
+| `xhttp-padding-placement` | Every request in all three modes when custom padding is enabled | `queryInHeader`, the default, places padding in a query argument of the URL contained in the specified request header. `query` writes it to the actual request URL, `header` writes it directly as a request-header value, and `cookie` writes it to a Cookie |
+| `xhttp-padding-key` | Custom padding with placement `queryInHeader`, `query`, or `cookie` | Padding query-argument or Cookie name; defaults to `x_padding` |
+| `xhttp-padding-header` | Custom padding with placement `queryInHeader` or `header` | Name of the request header carrying the padding; defaults to `X-Padding` |
+| `xhttp-padding-method` | Every request in all three modes when custom padding is enabled | Defaults to `repeat-x`, which generates repeated `X` characters by character count. `tokenish` generates random letters and digits, with padding length measured after HPACK Huffman encoding |
+
+#### Request Headers
+
+| Argument | Scope | Usage and default |
+|---|---|---|
+| `xhttp-header` | Every request in all three modes | Format: `xhttp-header="Name: Value"`. Specify one item per request header; the argument may be repeated. Set `Host` with `host`. Loon generates the request headers required for padding and HTTP framing |
+| `xhttp-no-grpc-header` | Persistent `stream-up` uplink requests and bidirectional `stream-one` requests only | Defaults to `false`. Set to `true` to omit the automatically added `Content-Type: application/grpc` |
+
+#### Session IDs and Sequence Numbers
+
+Session IDs allow the server to pair separate uplink and downlink requests. Sequence numbers start at `0` and are sent only with `packet-up` uplink requests. Custom placements and field names must match the server configuration. Session ID, sequence, and padding fields in the same placement must use different names.
+
+| Argument | Scope | Usage and default |
+|---|---|---|
+| `xhttp-session-id-placement` | `packet-up` and `stream-up` uplink and downlink requests | Supports `path`, `query`, `header`, and `cookie`; defaults to `path` |
+| `xhttp-session-id-key` | `packet-up` and `stream-up` when the session ID is placed in a query argument, request header, or Cookie | Defaults to `x_session` for query arguments and Cookies, and `X-Session` for request headers |
+| `xhttp-session-id-table` | `packet-up` and `stream-up`; used together with the session ID length | A custom character table or a case-sensitive preset such as `Base62`, `hex`, or `number`. An omitted or invalid setting uses a UUID |
+| `xhttp-session-id-length` | `packet-up` and `stream-up`; used together with the session ID character table | Accepts a positive integer or a closed range. Takes effect when the custom settings are valid; the default is a 36-character UUID |
+| `xhttp-seq-placement` | `packet-up` uplink requests only | Supports `path`, `query`, `header`, and `cookie`; defaults to `path` |
+| `xhttp-seq-key` | `packet-up` uplink requests only, when the sequence number is placed in a query argument, request header, or Cookie | Defaults to `x_seq` for query arguments and Cookies, and `X-Seq` for request headers |
 
 ## WireGuard
 
@@ -277,6 +362,8 @@ An IPv6 endpoint must use the format `[IPv6 address]:port`.
 
 ## Tailscale
 
+Supported starting with Loon 3.5.4 (Build 1016).
+
 A Tailscale node joins your Tailscale network (tailnet) and forwards TCP and UDP through devices in that network. Device addresses and peer connection information are provided by the control server, so you do not need to configure a server address, port, or WireGuard peer manually.
 
 Format:
@@ -301,10 +388,18 @@ Tailscale-Exit = tailscale,auth-key="tskey-auth-replace-with-your-key",hostname=
 
 Set `exit-node` to `auto` to randomly select from the available exit nodes. When device information is refreshed, Loon keeps the current selection as long as it remains available.
 
+Example that allows tailnet devices to access local services and advertises this device as an exit node:
+
+```ini
+Tailscale-Home = tailscale,hostname=loon-home,allow-inbound=true,advertise-exit-node=true,exit-fake-ip=true
+```
+
+When `allow-inbound` or `advertise-exit-node` is enabled, Loon proactively connects this node after the VPN starts and keeps it online. Advertising an exit node requires approval in the control panel. Enable only `allow-inbound` if you only want other devices to access local services.
+
 Full argument example:
 
 ```ini
-Tailscale = tailscale,control-url="https://controlplane.tailscale.com",auth-key="tskey-auth-replace-with-your-key",hostname=loon-iphone,exit-node=auto,accept-routes=true,accept-dns=true,magic-dns=true,path-mode=auto,mtu=1280,idle-session-timeout=300,ip-mode=prefer-v4,server-dns="223.5.5.5,https://dns.example.com/dns-query",udp=true,block-quic=true
+Tailscale = tailscale,control-url="https://controlplane.tailscale.com",auth-key="tskey-auth-replace-with-your-key",hostname=loon-iphone,exit-node=auto,accept-routes=true,accept-dns=true,magic-dns=true,allow-inbound=false,advertise-exit-node=false,exit-fake-ip=true,path-mode=auto,mtu=1280,idle-session-timeout=300,ip-mode=prefer-v4,server-dns="223.5.5.5,https://dns.example.com/dns-query",udp=true,block-quic=true
 ```
 
 | Argument | Default | Description |
@@ -316,9 +411,12 @@ Tailscale = tailscale,control-url="https://controlplane.tailscale.com",auth-key=
 | `accept-routes` | `true` | Use subnet routes advertised by devices. This allows access to other devices on their local networks, such as reaching a NAS through a Mac at home |
 | `accept-dns` | `true` | Accept DNS servers, split-DNS rules, and search domains provided by Tailscale. When using an exit node, Loon selects DNS according to the provided settings or sends queries through the exit node. When disabled, ordinary public domains use Loon's existing DNS flow, while device MagicDNS names can still be resolved from downloaded device information |
 | `magic-dns` | `true` | Automatically add routing rules for full MagicDNS names and device IP addresses from device information. When MagicDNS is enabled for the tailnet, Loon also adds a rule for its domain suffix. Matching requests use this node independently of `accept-dns` |
+| `allow-inbound` | `false` | Allow authorized tailnet devices to connect to local TCP or UDP services, such as SSH or HTTP, through this device's Tailscale address |
+| `advertise-exit-node` | `false` | Advertise this device as an exit node. After approval in the control panel, other tailnet devices can select it as their exit; this device's Loon rules determine how Internet traffic is forwarded |
+| `exit-fake-ip` | `true` | When this device acts as an exit and handles client DNS queries, return Fake IP addresses for eligible A or AAAA queries. During forwarding, Loon uses the address to recover the domain name and applies local domain rules. Set to `false` to return real IP addresses |
 | `path-mode` | `auto` | `auto` selects the path automatically, attempting a direct P2P connection and using a DERP relay when necessary; `derp` uses DERP relays only |
 | `mtu` | `1280` | MTU of the inner IP packet. Values from `576` through `1280` are allowed; values below `1280` require `ip-mode=v4-only` |
-| `idle-session-timeout` | `300` | Session idle timeout, in seconds, after all traffic connections have closed. Enter a non-negative integer; `0` disables idle shutdown. The node reconnects the next time it is used, while the saved identity is retained |
+| `idle-session-timeout` | `300` | Session idle timeout, in seconds, after all traffic connections have closed. Enter a non-negative integer; `0` disables idle shutdown. The node reconnects the next time it is used, while the saved identity is retained. This value is fixed at `0` when `allow-inbound` or `advertise-exit-node` is enabled |
 | `ip-mode` | Unspecified | Address-family policy: `v4-only`, `dual`, `prefer-v4`, `prefer-v6`, or `v6-only`. This affects the IPv4 or IPv6 addresses used for domain resolution and destination connections |
 | `server-dns` | Not set | DNS used to resolve domain names in control-server, relay-server, and similar connection addresses. See [Node DNS](#node-dns) for the format. This does not replace DNS settings provided by Tailscale |
 | `udp` | `true` | Whether to forward application UDP traffic. This is not a P2P switch; set `path-mode=derp` to use relays only |
@@ -367,6 +465,45 @@ AnyTLS = AnyTLS,anytls.example.com,443,"password",sni=anytls.example.com,skip-ce
 ```
 
 `idle-session-timeout` is the idle session timeout in seconds. `max-stream-count` is the maximum number of concurrent streams allowed in one session. `public-key` and `short-id` are used for Reality.
+
+## Snell
+
+Supported starting with Loon 3.5.4 (Build 1017).
+
+Supports TCP forwarding and standard UDP forwarding with Snell v4 and v5. Standard UDP datagrams are carried over Snell's TCP connection.
+
+**Configuration format**
+
+```ini
+Node name = Snell,server,port,"PSK",version=4,optional arguments
+```
+
+Replace `"PSK"` with the pre-shared key configured on the server. You can also write `psk="PSK"` in the same position.
+
+**Configuration examples**
+
+```ini
+[Proxy]
+Snell-v4 = Snell,snell.example.com,6160,"your-psk",version=4
+Snell-v5 = Snell,snell.example.com,6161,"your-psk",version=5,udp=true
+Snell-HTTP = Snell,snell.example.com,6162,"your-psk",version=4,obfs=http,obfs-host=www.example.com,obfs-uri=/,udp=true,block-quic=false,ip-mode=prefer-v4,server-dns="223.5.5.5,https://dns.example.com/dns-query"
+```
+
+Configure `obfs=http` only when the server uses HTTP obfuscation.
+
+| Argument | Description |
+|---|---|
+| `version` | Supports `4` and `5`; defaults to `4` |
+| `udp` | Set to `true` to allow UDP forwarding; defaults to `false`. The server must also support UDP forwarding |
+| `block-quic` | Whether to block QUIC traffic; defaults to `true`. Set to `false` to allow eligible QUIC traffic through standard UDP forwarding |
+| `obfs` | Obfuscation type: `none` or `http`; defaults to `none`. The argument name `obfs-name` is also supported |
+| `obfs-host` | Host used for HTTP obfuscation. Applies only with `obfs=http` and defaults to the node server address |
+| `obfs-uri` | Request path used for HTTP obfuscation. Applies only with `obfs=http`, must begin with `/`, and defaults to `/` |
+| `ip-mode`, `server-dns` | Options for resolving the node server's domain name; see [Common Arguments](#common-arguments) |
+
+When adding a Snell node manually, Loon uses v4. To specify v5, add `version=5` to the node in the `[Proxy]` section of the configuration file.
+
+[Snell v5 QUIC Proxy Mode](https://kb.nssurge.com/surge-knowledge-base/release-notes/snell#quic-proxy-mode) is not yet supported.
 
 ## Custom by JavaScript
 

@@ -200,7 +200,7 @@ VMess-ShadowTLS = VMess,vmess.example.com,443,auto,"52396e06-041a-4cc2-be5c-8525
 VMess-Reality = VMess,vmess.example.com,443,auto,"52396e06-041a-4cc2-be5c-8525eb457809",transport=tcp,alterId=0,public-key="LgJ9bNTyUqBLFkDA12-QgEL7c1yQ1ztk-V1Q-3OLXSk",short-id=164168844958a16d,over-tls=true,sni=www.example.com,tls-profile=chrome,udp=true,block-quic=false,ip-mode=prefer-v4,server-dns="223.5.5.5,h3://dns.example.com/dns-query"
 ```
 
-`transport` 支持 `tcp`、`ws`、`http`；`host` 和 `path` 用于 WebSocket 或 HTTP 传输。加密方式支持 `none`、`auto`、`aes-128-cfb`、`aes-128-gcm`、`chacha20-ietf-poly1305`。
+`transport` 支持 `tcp`、`ws`、`http` 和 `xhttp`。`host` 和 `path` 用于 WebSocket、HTTP 和 XHTTP。加密方式支持 `none`、`auto`、`aes-128-cfb`、`aes-128-gcm`、`chacha20-ietf-poly1305`。XHTTP 的配置见 [XHTTP](#xhttp)。
 
 ## VLESS
 
@@ -228,7 +228,7 @@ ShadowTLS 示例：
 VLESS-ShadowTLS = VLESS,vless.example.com,443,"52396e06-041a-4cc2-be5c-8525eb457809",transport=tcp,over-tls=false,shadow-tls-password=shadow-password,shadow-tls-sni=www.example.com,shadow-tls-version=3,udp=true,block-quic=false,ip-mode=prefer-v4,server-dns="223.5.5.5,quic://dns.example.com"
 ```
 
-`transport` 支持 `tcp`、`ws`、`http`；`flow` 当前支持 `xtls-rprx-vision`。
+`transport` 支持 `tcp`、`ws`、`http` 和 `xhttp`。`flow` 当前支持 `xtls-rprx-vision`。XHTTP 的配置见 [XHTTP](#xhttp)。
 
 ## Trojan
 
@@ -250,7 +250,92 @@ Reality 参数示例：
 Trojan-Reality = Trojan,trojan.example.com,443,"password",transport=tcp,public-key="LgJ9bNTyUqBLFkDA12-QgEL7c1yQ1ztk-V1Q-3OLXSk",short-id=164168844958a16d,sni=www.example.com,tls-profile=chrome,alpn=h2,fast-open=true,udp=true,block-quic=false,ip-mode=prefer-v4,server-dns="223.5.5.5,h3://dns.example.com/dns-query"
 ```
 
-`transport` 支持 `tcp`、`ws`。兼容配置中的 `transport=http` 会按 WebSocket 处理；旧参数 `ws=true`、`ws-path`、`ws-headers=Host:域名` 分别对应 `transport=ws`、`path`、`host`。
+`transport` 支持 `tcp`、`ws` 和 `xhttp`。兼容配置中的 `transport=http` 会按 WebSocket 处理。旧参数 `ws=true`、`ws-path`、`ws-headers=Host:域名` 分别对应 `transport=ws`、`path`、`host`。XHTTP 的配置见 [XHTTP](#xhttp)。
+
+## XHTTP
+
+XHTTP 是 VLESS、VMess 和 Trojan 的传输方式。三个协议均支持通过 HTTP/1.1 或 HTTP/2 转发 TCP，开启 `udp=true` 后也可在同一传输中承载 UDP 数据报。VLESS 节点省略 `flow`，VMess 使用 AEAD 和 `alterId=0`，Trojan 使用 TLS 或 REALITY。
+
+```ini
+[Proxy]
+VLESS-XHTTP = VLESS,vless.example.com,443,"52396e06-041a-4cc2-be5c-8525eb457809",transport=xhttp,path=/xhttp,host=vless.example.com,over-tls=true,sni=vless.example.com,alpn=h2,xhttp-mode=packet-up,udp=true
+VMess-XHTTP = VMess,vmess.example.com,443,aes-128-gcm,"52396e06-041a-4cc2-be5c-8525eb457809",alterId=0,transport=xhttp,path=/xhttp,host=vmess.example.com,over-tls=true,sni=vmess.example.com,alpn=http/1.1,xhttp-mode=stream-up,udp=true
+Trojan-XHTTP = Trojan,trojan.example.com,443,"password",transport=xhttp,path=/xhttp,host=trojan.example.com,sni=trojan.example.com,alpn=h2,xhttp-mode=stream-one,udp=true
+```
+
+### 基础参数
+
+| 参数 | 说明 |
+|---|---|
+| `transport=xhttp` | 使用 XHTTP，协议的服务器地址、端口和认证参数沿用各协议原来的写法 |
+| `path` | XHTTP 请求的基础路径，默认 `/`，可包含查询参数。请与服务端设置一致 |
+| `host` | HTTP 请求的 Host，HTTP/2 中对应 `:authority`。省略时优先使用 `sni`，再使用节点服务器地址 |
+| `over-tls` | VLESS、VMess 可用 `true` 开启普通 TLS，或用 `false` 使用明文 HTTP/1.1。Trojan 默认使用 TLS |
+| `alpn` | 使用 `http/1.1` 或 `h2` 指定 HTTP 版本。省略时，普通 TLS 和 REALITY 使用 `h2`，明文使用 `http/1.1`。HTTP/2 需要普通 TLS 或 REALITY |
+| `xhttp-mode` | 支持 `auto`、`packet-up`、`stream-up`、`stream-one`，默认 `auto` |
+| `public-key`、`short-id`、`sni` | 使用 REALITY 时，分别填写服务端公钥、Short ID 和服务器名称，`alpn` 可省略或设为 `h2` |
+| `udp` | 设为 `true` 后允许 XHTTP 节点转发 UDP |
+
+普通 TLS 的证书校验、证书或公钥指纹及 `tls-profile` 见 [通用参数](#通用参数)。
+
+### 传输模式
+
+HTTP/1.1 和 HTTP/2 都支持三种显式模式。模式应与服务端配置一致。
+
+| 模式 | 上下行组织 |
+|---|---|
+| `packet-up` | 下行使用持续的 GET。上行数据拆成若干带序号的 HTTP 请求 |
+| `stream-up` | 下行使用持续的 GET，上行使用一个持续请求。两个请求使用同一会话 ID |
+| `stream-one` | 一个持续请求的请求体和响应体分别承载上传和下载 |
+| `auto` | 普通 TLS 或明文选 `packet-up`，REALITY 选 `stream-one` |
+
+### 高级参数
+
+下表列出 HTTP/1.1 和 HTTP/2 上生效的高级参数。生效范围按节点实际使用的模式判断。参数保持 `key=value` 写法，可在节点行中按需组合。
+
+#### 上传与分包
+
+| 参数 | 生效范围 | 用法与默认值 |
+|---|---|---|
+| `xhttp-uplink-method` | 三种模式的上传请求。`GET` 仅适用于 `packet-up` | 默认 `POST`，也可用 `PUT` 等 HTTP 方法。独立下行请求仍用 `GET` |
+| `xhttp-min-post-interval-ms` | 仅 `packet-up` 的相邻上传请求 | 单位为毫秒，默认 `30`。可填单值或闭区间，如 `30-60`。`0` 表示不额外等待 |
+| `xhttp-max-post-bytes` | 仅 `packet-up` 的单个上传请求 | 限制单包原始数据字节数，默认 `524288`。可填单值或闭区间，`0` 使用默认上限。放入请求头或 Cookie 时，还受头部容量限制 |
+| `xhttp-uplink-data-placement` | 上传请求。`header`、`cookie` 仅适用于 `packet-up` | 默认 `body`。`auto` 和 `body` 都用 HTTP 正文。`header` 或 `cookie` 将编码后的上传数据放进请求头或 Cookie |
+| `xhttp-uplink-data-key` | 仅 `packet-up`，且数据放入 `header` 或 `cookie` | 数据字段名前缀。请求头默认 `X-Data`，Cookie 默认 `x_data` |
+| `xhttp-uplink-chunk-size` | 仅 `packet-up`，且数据放入 `header` 或 `cookie` | Base64URL 编码后每片的字符数，可填单值或闭区间。请求头默认 `3000-4000`，Cookie 默认 `2048-3072`。设定值最低按 `64` 处理，最后一片可更短 |
+
+#### 填充
+
+三种模式都会为每个 HTTP 请求添加填充。默认把重复的 `X` 放进 `Referer` 所含 URL 的 `x_padding` 查询参数。开启自定义填充后，位置、字段名和生成方式需与服务端一致。
+
+| 参数 | 生效范围 | 用法与默认值 |
+|---|---|---|
+| `xhttp-padding-bytes` | 三种模式的每个请求 | 默认 `100-1000`，可填单值或闭区间，每个请求独立取值。`0` 使用默认区间 |
+| `xhttp-padding-obfs-mode` | 三种模式的每个请求 | 默认 `false`。设为 `true` 后启用下列自定义填充参数 |
+| `xhttp-padding-placement` | 开启自定义填充后，三种模式的每个请求 | `queryInHeader` 把填充放到指定请求头所含 URL 的查询参数中，为默认值。`query` 写入实际请求 URL，`header` 直接写入请求头值，`cookie` 写入 Cookie |
+| `xhttp-padding-key` | 开启自定义填充，位置为 `queryInHeader`、`query` 或 `cookie` | 填充查询参数或 Cookie 名，默认 `x_padding` |
+| `xhttp-padding-header` | 开启自定义填充，位置为 `queryInHeader` 或 `header` | 承载填充的请求头名称，默认 `X-Padding` |
+| `xhttp-padding-method` | 开启自定义填充后，三种模式的每个请求 | 默认 `repeat-x`，按字符数生成重复的 `X`。`tokenish` 生成随机字母和数字，填充长度按 HPACK Huffman 编码后的字节数计算 |
+
+#### 请求头
+
+| 参数 | 生效范围 | 用法与默认值 |
+|---|---|---|
+| `xhttp-header` | 三种模式的每个请求 | 格式为 `xhttp-header="名称: 值"`，每个请求头写一项，可重复填写。`Host` 通过 `host` 设置。填充和 HTTP 分帧所需的请求头由 Loon 生成 |
+| `xhttp-no-grpc-header` | 仅 `stream-up` 的持续上传请求和 `stream-one` 的双向请求 | 默认 `false`。设为 `true` 后省略自动添加的 `Content-Type: application/grpc` |
+
+#### 会话 ID 与序号
+
+会话 ID 用来让服务端配对独立的上行和下行请求。序号从 `0` 开始，仅随 `packet-up` 的上传请求发送。自定义位置和字段名需与服务端一致，同一位置的会话 ID、序号和填充字段应使用不同的名称。
+
+| 参数 | 生效范围 | 用法与默认值 |
+|---|---|---|
+| `xhttp-session-id-placement` | `packet-up`、`stream-up` 的上下行请求 | 支持 `path`、`query`、`header`、`cookie`，默认 `path` |
+| `xhttp-session-id-key` | `packet-up`、`stream-up`，且会话 ID 放在查询参数、请求头或 Cookie 中 | 默认查询参数和 Cookie 名为 `x_session`，请求头名为 `X-Session` |
+| `xhttp-session-id-table` | `packet-up`、`stream-up`，与会话 ID 长度配合使用 | 自定义字符表或使用区分大小写的预设，如 `Base62`、`hex`、`number`。设置缺省或无效时使用 UUID |
+| `xhttp-session-id-length` | `packet-up`、`stream-up`，与会话 ID 字符表配合使用 | 可填正整数或闭区间。自定义设置有效时生效，默认使用 36 字符的 UUID |
+| `xhttp-seq-placement` | 仅 `packet-up` 的上传请求 | 支持 `path`、`query`、`header`、`cookie`，默认 `path` |
+| `xhttp-seq-key` | 仅 `packet-up` 的上传请求，且序号放在查询参数、请求头或 Cookie 中 | 默认查询参数和 Cookie 名为 `x_seq`，请求头名为 `X-Seq` |
 
 ## WireGuard
 
@@ -277,6 +362,8 @@ IPv6 Endpoint 需要写成 `[IPv6地址]:端口`。
 
 ## Tailscale
 
+从 3.5.4 (1016) 开始支持。
+
 Tailscale 节点加入你的 Tailscale 网络（tailnet），通过其中的设备转发 TCP、UDP。设备地址和对端连接资料由控制服务器下发，不需要手动填写服务器地址、端口或 WireGuard Peer。
 
 格式：
@@ -301,10 +388,18 @@ Tailscale-Exit = tailscale,auth-key="tskey-auth-替换为你的密钥",hostname=
 
 将 `exit-node` 改为 `auto`，会从可用的出口设备中随机选择一个；当前选择仍可用时，刷新设备资料会继续使用它。
 
+允许组网设备访问本机服务，并将本机发布为出口的示例
+
+```ini
+Tailscale-Home = tailscale,hostname=loon-home,allow-inbound=true,advertise-exit-node=true,exit-fake-ip=true
+```
+
+开启 `allow-inbound` 或 `advertise-exit-node` 后，Loon 会在 VPN 启动后主动连接这个节点，并保持它在线。作为出口需要在控制后台批准。只想访问本机服务时，开启 `allow-inbound` 即可。
+
 完整参数示例：
 
 ```ini
-Tailscale = tailscale,control-url="https://controlplane.tailscale.com",auth-key="tskey-auth-替换为你的密钥",hostname=loon-iphone,exit-node=auto,accept-routes=true,accept-dns=true,magic-dns=true,path-mode=auto,mtu=1280,idle-session-timeout=300,ip-mode=prefer-v4,server-dns="223.5.5.5,https://dns.example.com/dns-query",udp=true,block-quic=true
+Tailscale = tailscale,control-url="https://controlplane.tailscale.com",auth-key="tskey-auth-替换为你的密钥",hostname=loon-iphone,exit-node=auto,accept-routes=true,accept-dns=true,magic-dns=true,allow-inbound=false,advertise-exit-node=false,exit-fake-ip=true,path-mode=auto,mtu=1280,idle-session-timeout=300,ip-mode=prefer-v4,server-dns="223.5.5.5,https://dns.example.com/dns-query",udp=true,block-quic=true
 ```
 
 | 参数 | 默认值 | 说明 |
@@ -316,9 +411,12 @@ Tailscale = tailscale,control-url="https://controlplane.tailscale.com",auth-key=
 | `accept-routes` | `true` | 使用设备提供的子网路由，通过 Tailscale 设备访问它所在局域网的其他设备，例如通过家里的 Mac 访问 NAS |
 | `accept-dns` | `true` | 接受 Tailscale 下发的 DNS 服务器、域名分流和搜索域设置。使用出口时，按下发设置选择 DNS 或通过出口设备查询；关闭后，普通公网域名使用 Loon 原有 DNS 流程，设备 MagicDNS 仍可根据已下发资料解析 |
 | `magic-dns` | `true` | 根据设备资料自动添加完整 MagicDNS 域名和设备 IP 的分流规则；tailnet 启用 MagicDNS 时，也添加所属域名后缀规则。匹配的请求使用此节点，与 `accept-dns` 独立 |
+| `allow-inbound` | `false` | 允许有访问权限的组网设备通过本机的 Tailscale 地址连接本机 TCP 或 UDP 服务，例如 SSH 或 HTTP |
+| `advertise-exit-node` | `false` | 将本机发布为出口节点。经控制后台批准后，其他组网设备可选本机作为出口，互联网流量由本机的 Loon 规则决定如何转发 |
+| `exit-fake-ip` | `true` | 本机作为出口并处理客户端 DNS 查询时，对符合条件的 A 或 AAAA 查询返回 Fake IP。转发时用该地址找回域名，再按本机的域名规则分流。设为 `false` 时返回真实 IP |
 | `path-mode` | `auto` | `auto` 自动选择通路，尝试 P2P 直连并在需要时使用 DERP 中继；`derp` 仅使用 DERP 中继 |
 | `mtu` | `1280` | 内层 IP 包的 MTU。允许 `576`～`1280`；小于 `1280` 时必须同时设置 `ip-mode=v4-only` |
-| `idle-session-timeout` | `300` | 没有业务连接后的会话空闲关闭时间，填写非负整数，单位为秒；`0` 表示不因空闲关闭。关闭后，下次使用节点会重新连接，已保存的身份保留 |
+| `idle-session-timeout` | `300` | 没有业务连接后的会话空闲关闭时间，填写非负整数，单位为秒；`0` 表示不因空闲关闭。关闭后，下次使用节点会重新连接，已保存的身份保留。开启 `allow-inbound` 或 `advertise-exit-node` 时，此值固定为 `0` |
 | `ip-mode` | 未指定 | 地址族策略，支持 `v4-only`、`dual`、`prefer-v4`、`prefer-v6`、`v6-only`；影响域名解析及目标连接使用的 IPv4／IPv6 地址 |
 | `server-dns` | 未设置 | 解析控制服务器、中继服务器等连接地址中的域名时使用的 DNS，格式见上方“节点 DNS”；不会替换 Tailscale 下发的 DNS 设置 |
 | `udp` | `true` | 是否允许业务 UDP 转发；此项不是 P2P 开关，仅使用中继请设置 `path-mode=derp` |
@@ -367,6 +465,45 @@ AnyTLS = AnyTLS,anytls.example.com,443,"password",sni=anytls.example.com,skip-ce
 ```
 
 `idle-session-timeout` 是空闲会话超时秒数，`max-stream-count` 是单个会话允许的并发 Stream 数量。`public-key` 和 `short-id` 用于 Reality。
+
+## Snell
+
+从 3.5.4 (1017) 开始支持。
+
+支持 Snell v4 和 v5 的 TCP 转发及普通 UDP 转发。普通 UDP 数据报通过 Snell 的 TCP 连接传输。
+
+**配置格式**
+
+```ini
+节点名称 = Snell,服务器,端口,"PSK",version=4,可选参数
+```
+
+将 `"PSK"` 替换为服务端配置的预共享密钥。也可以在同一位置写成 `psk="PSK"`。
+
+**配置示例**
+
+```ini
+[Proxy]
+Snell-v4 = Snell,snell.example.com,6160,"your-psk",version=4
+Snell-v5 = Snell,snell.example.com,6161,"your-psk",version=5,udp=true
+Snell-HTTP = Snell,snell.example.com,6162,"your-psk",version=4,obfs=http,obfs-host=www.example.com,obfs-uri=/,udp=true,block-quic=false,ip-mode=prefer-v4,server-dns="223.5.5.5,https://dns.example.com/dns-query"
+```
+
+仅在服务端使用 HTTP 混淆时配置 `obfs=http`。
+
+| 参数 | 说明 |
+|---|---|
+| `version` | 支持 `4` 和 `5`，默认 `4` |
+| `udp` | 设置为 `true` 后允许转发 UDP，默认 `false`。服务端也需要支持 UDP 转发 |
+| `block-quic` | 是否阻止 QUIC 流量，默认 `true`。设为 `false` 后，允许的 QUIC 流量走普通 UDP 转发 |
+| `obfs` | 混淆类型，可用 `none` 或 `http`，默认 `none`。也可使用参数名 `obfs-name` |
+| `obfs-host` | HTTP 混淆的 Host，仅在 `obfs=http` 时使用，默认取节点服务器地址 |
+| `obfs-uri` | HTTP 混淆的请求路径，仅在 `obfs=http` 时使用，必须以 `/` 开头，默认为 `/` |
+| `ip-mode`、`server-dns` | 节点服务器域名解析选项，见 [通用参数](#通用参数) |
+
+手动添加 Snell 节点时使用 v4。需要指定 v5 时，可在配置文件的 `[Proxy]` 段填写 `version=5`。
+
+尚未接入 [Snell v5 的 QUIC Proxy Mode](https://kb.nssurge.com/surge-knowledge-base/release-notes/snell#quic-proxy-mode)。
 
 ## Custom by JavaScript
 
