@@ -228,7 +228,35 @@ ShadowTLS 示例：
 VLESS-ShadowTLS = VLESS,vless.example.com,443,"52396e06-041a-4cc2-be5c-8525eb457809",transport=tcp,over-tls=false,shadow-tls-password=shadow-password,shadow-tls-sni=www.example.com,shadow-tls-version=3,udp=true,block-quic=false,ip-mode=prefer-v4,server-dns="223.5.5.5,quic://dns.example.com"
 ```
 
-`transport` 支持 `tcp`、`ws`、`http` 和 `xhttp`。`flow` 当前支持 `xtls-rprx-vision`。XHTTP 的配置见 [XHTTP](#xhttp)。
+`transport` 支持 `tcp`、`ws`、`http` 和 `xhttp`。WebSocket 和 HTTP 混淆的 `host`、`path` 应与服务端设置一致。XHTTP 的配置见 [XHTTP](#xhttp)。
+
+### VLESS Encryption
+
+VLESS Encryption 只用于 VLESS。它可用于 TCP、WebSocket、HTTP 混淆和 XHTTP，可独立使用，也可叠加在普通 TLS 或 REALITY 内。服务端也要开启 VLESS Encryption，模式和公钥以服务端提供的配置为准。
+
+| 参数 | 默认值 | 说明 |
+|---|---|---|
+| `encryption-mode` | `none` | `none` 关闭 Encryption，`native` 使用基础加密模式，`xorpub` 额外掩码握手中的公钥相关数据，`random` 在此基础上也掩码加密记录的长度字段。在节点编辑页开启 Encryption 时默认选 `native` |
+| `encryption-rtt` | `0rtt` | `0rtt` 在有有效票据时恢复会话，首连或票据失效后先做完整握手。`1rtt` 每次建立新的 Encryption 会话都做完整握手 |
+| `encryption-public-keys` | 未设置 | 开启 Encryption 时必填。填写服务端提供的 Base64URL 公钥，支持 X25519 和 ML-KEM-768 公钥。多个公钥按服务端给出的顺序，用英文点号 `.` 分隔。REALITY 的公钥单独填在 `public-key` |
+| `encryption-padding` | `100-111-1111.75-0-111.50-0-3333` | 完整握手的自定义填充。用英文点号分隔多个 `概率-最小值-最大值` 三元组，从第一组起交替表示填充字节数和分段间隔毫秒数。第一组的概率填 `100`，两个长度值均至少为 `35`。例如 `100-128-128` 表示固定 128 字节，不加分段间隔。留空沿用默认值 |
+
+### XTLS Vision
+
+`flow` 可填 `xtls-rprx-vision` 或 `xtls-rprx-vision-udp443`。无需 Vision 时省略 `flow`。
+
+| 组合 | 支持范围 |
+|---|---|
+| Vision，Encryption 关闭 | TCP + TLS 或 REALITY |
+| Vision，Encryption 开启 | 支持 Encryption 的 TCP、WebSocket、HTTP 混淆和 XHTTP。使用 REALITY + XHTTP 时，`alpn` 省略或填单个 `h2` |
+
+开启 Encryption 时，`xtls-rprx-vision` 拒绝发往 UDP/443 的数据报，`xtls-rprx-vision-udp443` 允许。转发 UDP 须设置 `udp=true`。需要转发 QUIC 时，还要设置 `block-quic=false`。
+
+VLESS + XHTTP + REALITY + Encryption + Vision 示例。把地址、UUID、路径和两种公钥替换为服务端提供的值。
+
+```ini
+VLESS-Encrypted-XHTTP = VLESS,vless.example.com,443,"52396e06-041a-4cc2-be5c-8525eb457809",transport=xhttp,path=/xhttp,host=vless.example.com,alpn=h2,xhttp-mode=stream-one,xhttp-xmux-max-connections=1,over-tls=true,sni=www.example.com,public-key="LgJ9bNTyUqBLFkDA12-QgEL7c1yQ1ztk-V1Q-3OLXSk",short-id=164168844958a16d,encryption-mode=native,encryption-rtt=0rtt,encryption-public-keys="MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY",flow=xtls-rprx-vision,udp=true
+```
 
 ## Trojan
 
@@ -254,7 +282,7 @@ Trojan-Reality = Trojan,trojan.example.com,443,"password",transport=tcp,public-k
 
 ## XHTTP
 
-XHTTP 是 VLESS、VMess 和 Trojan 的传输方式。三个协议均支持通过 HTTP/1.1 或 HTTP/2 转发 TCP，开启 `udp=true` 后也可在同一传输中承载 UDP 数据报。VLESS 节点省略 `flow`，VMess 使用 AEAD 和 `alterId=0`，Trojan 使用 TLS 或 REALITY。
+XHTTP 是 VLESS、VMess 和 Trojan 的传输方式，支持 HTTP/1.1、HTTP/2 和 HTTP/3。节点可转发 TCP，设 `udp=true` 后也可在 XHTTP 请求内承载业务 UDP 数据报。VMess 使用 AEAD 和 `alterId=0`。Trojan 使用普通 TLS 或 REALITY。VLESS 使用 XHTTP 时，开启 [VLESS Encryption](#vless-encryption) 才能配置 [XTLS Vision](#xtls-vision)。
 
 ```ini
 [Proxy]
@@ -269,29 +297,29 @@ Trojan-XHTTP = Trojan,trojan.example.com,443,"password",transport=xhttp,path=/xh
 |---|---|
 | `transport=xhttp` | 使用 XHTTP，协议的服务器地址、端口和认证参数沿用各协议原来的写法 |
 | `path` | XHTTP 请求的基础路径，默认 `/`，可包含查询参数。请与服务端设置一致 |
-| `host` | HTTP 请求的 Host，HTTP/2 中对应 `:authority`。省略时优先使用 `sni`，再使用节点服务器地址 |
-| `over-tls` | VLESS、VMess 可用 `true` 开启普通 TLS，或用 `false` 使用明文 HTTP/1.1。Trojan 默认使用 TLS |
-| `alpn` | 使用 `http/1.1` 或 `h2` 指定 HTTP 版本。省略时，普通 TLS 和 REALITY 使用 `h2`，明文使用 `http/1.1`。HTTP/2 需要普通 TLS 或 REALITY |
+| `host` | HTTP 请求的 Host，在 HTTP/2 和 HTTP/3 中对应 `:authority`。省略时优先使用 `sni`，再使用节点服务器地址 |
+| `over-tls` | VLESS、VMess 可用 `true` 开启普通 TLS，或用 `false` 使用明文 HTTP/1.1。Trojan 默认使用 TLS，配置 REALITY 公钥时使用 REALITY |
+| `alpn` | 指定 HTTP 版本。普通 TLS 支持 `http/1.1`、`h2` 和 `h3`，省略时用 `h2`。明文使用 `http/1.1`，REALITY 使用 `h2` |
 | `xhttp-mode` | 支持 `auto`、`packet-up`、`stream-up`、`stream-one`，默认 `auto` |
 | `public-key`、`short-id`、`sni` | 使用 REALITY 时，分别填写服务端公钥、Short ID 和服务器名称，`alpn` 可省略或设为 `h2` |
-| `udp` | 设为 `true` 后允许 XHTTP 节点转发 UDP |
+| `udp` | 设为 `true` 后允许经 XHTTP 转发业务 UDP。HTTP/3 的 UDP 是节点连接自身的传输方式，由 `alpn=h3` 选择 |
 
-普通 TLS 的证书校验、证书或公钥指纹及 `tls-profile` 见 [通用参数](#通用参数)。
+普通 TLS 的证书校验和指纹配置见[通用参数](#通用参数)。`tls-profile` 适用于使用 TCP 的 TLS 或 REALITY 握手，即 HTTP/1.1 或 H2。
 
 ### 传输模式
 
-HTTP/1.1 和 HTTP/2 都支持三种显式模式。模式应与服务端配置一致。
+HTTP/1.1、HTTP/2 和 HTTP/3 都支持三种显式模式。模式应与服务端配置一致。
 
 | 模式 | 上下行组织 |
 |---|---|
 | `packet-up` | 下行使用持续的 GET。上行数据拆成若干带序号的 HTTP 请求 |
 | `stream-up` | 下行使用持续的 GET，上行使用一个持续请求。两个请求使用同一会话 ID |
 | `stream-one` | 一个持续请求的请求体和响应体分别承载上传和下载 |
-| `auto` | 普通 TLS 或明文选 `packet-up`，REALITY 选 `stream-one` |
+| `auto` | 普通 TLS 或明文选 `packet-up`。REALITY 未配置独立下行时选 `stream-one`，配置独立下行时选 `stream-up` |
 
 ### 高级参数
 
-下表列出 HTTP/1.1 和 HTTP/2 上生效的高级参数。生效范围按节点实际使用的模式判断。参数保持 `key=value` 写法，可在节点行中按需组合。
+参数写成 `key=value`，按节点实际使用的模式生效。支持区间的字段既可填单值，也可填 `100-300` 这样的闭区间。主节点的请求头设置用于主端点，独立下行的 GET 使用下行自己的请求头。
 
 #### 上传与分包
 
@@ -310,18 +338,18 @@ HTTP/1.1 和 HTTP/2 都支持三种显式模式。模式应与服务端配置一
 
 | 参数 | 生效范围 | 用法与默认值 |
 |---|---|---|
-| `xhttp-padding-bytes` | 三种模式的每个请求 | 默认 `100-1000`，可填单值或闭区间，每个请求独立取值。`0` 使用默认区间 |
-| `xhttp-padding-obfs-mode` | 三种模式的每个请求 | 默认 `false`。设为 `true` 后启用下列自定义填充参数 |
-| `xhttp-padding-placement` | 开启自定义填充后，三种模式的每个请求 | `queryInHeader` 把填充放到指定请求头所含 URL 的查询参数中，为默认值。`query` 写入实际请求 URL，`header` 直接写入请求头值，`cookie` 写入 Cookie |
+| `xhttp-padding-bytes` | 主端点的请求和继承主节点填充设置的独立下行 GET | 默认 `100-1000`，可填单值或闭区间，每个请求独立取值。`0` 使用默认区间 |
+| `xhttp-padding-obfs-mode` | 主端点的请求和继承主节点填充设置的独立下行 GET | 默认 `false`。设为 `true` 后启用下列自定义填充参数 |
+| `xhttp-padding-placement` | 开启自定义填充后，主端点的请求和继承主节点填充设置的独立下行 GET | `queryInHeader` 把填充放到指定请求头所含 URL 的查询参数中，为默认值。`query` 写入实际请求 URL，`header` 直接写入请求头值，`cookie` 写入 Cookie |
 | `xhttp-padding-key` | 开启自定义填充，位置为 `queryInHeader`、`query` 或 `cookie` | 填充查询参数或 Cookie 名，默认 `x_padding` |
 | `xhttp-padding-header` | 开启自定义填充，位置为 `queryInHeader` 或 `header` | 承载填充的请求头名称，默认 `X-Padding` |
-| `xhttp-padding-method` | 开启自定义填充后，三种模式的每个请求 | 默认 `repeat-x`，按字符数生成重复的 `X`。`tokenish` 生成随机字母和数字，填充长度按 HPACK Huffman 编码后的字节数计算 |
+| `xhttp-padding-method` | 开启自定义填充后，主端点的请求和继承主节点填充设置的独立下行 GET | 默认 `repeat-x`，按字符数生成重复的 `X`。`tokenish` 生成随机字母和数字，填充长度按 HPACK Huffman 编码后的字节数计算 |
 
 #### 请求头
 
 | 参数 | 生效范围 | 用法与默认值 |
 |---|---|---|
-| `xhttp-header` | 三种模式的每个请求 | 格式为 `xhttp-header="名称: 值"`，每个请求头写一项，可重复填写。`Host` 通过 `host` 设置。填充和 HTTP 分帧所需的请求头由 Loon 生成 |
+| `xhttp-header` | 三种模式发往主端点的请求 | 格式为 `xhttp-header="名称: 值"`，每个请求头写一项，可重复填写。`Host` 通过 `host` 设置。填充和 HTTP 分帧所需的请求头由 Loon 生成 |
 | `xhttp-no-grpc-header` | 仅 `stream-up` 的持续上传请求和 `stream-one` 的双向请求 | 默认 `false`。设为 `true` 后省略自动添加的 `Content-Type: application/grpc` |
 
 #### 会话 ID 与序号
@@ -336,6 +364,88 @@ HTTP/1.1 和 HTTP/2 都支持三种显式模式。模式应与服务端配置一
 | `xhttp-session-id-length` | `packet-up`、`stream-up`，与会话 ID 字符表配合使用 | 可填正整数或闭区间。自定义设置有效时生效，默认使用 36 字符的 UUID |
 | `xhttp-seq-placement` | 仅 `packet-up` 的上传请求 | 支持 `path`、`query`、`header`、`cookie`，默认 `path` |
 | `xhttp-seq-key` | 仅 `packet-up` 的上传请求，且序号放在查询参数、请求头或 Cookie 中 | 默认查询参数和 Cookie 名为 `x_seq`，请求头名为 `X-Seq` |
+
+#### XMUX
+
+直连 XHTTP 节点默认启用 XMUX。HTTP/2、HTTP/3 可把多个 XHTTP 会话复用到已有连接。HTTP/1.1 的复用只用于 `packet-up` 的短上传请求，持续的请求各用自己的连接。
+
+下面各项作用于主端点。没有独立下行时，主端点也承载下载。额度类参数可以填正整数或闭区间。整组省略或均为 `0` 时，默认连接数量为 `3`，请求额度为 `600-900`，复用时限为 `1800-3000` 秒。任一项为非零值时，使用这组自定义额度，省略的额度按 `0` 处理。`max-concurrency` 和 `max-connections` 只能有一项为正值。
+
+| 参数 | 说明 |
+|---|---|
+| `xhttp-xmux-max-concurrency` | 一个连接池条目可同时分配给多少个 XHTTP 会话。达到上限时，可开新的条目。`0` 表示不设置此并发额度 |
+| `xhttp-xmux-max-connections` | 连接池中保持多少个可复用条目。设为 `1` 时，新会话优先使用同一个仍有额度的条目。`0` 表示不指定条目数量 |
+| `xhttp-xmux-max-reuse-times` | 一个条目累计可分配给多少个会话，包含第一次分配。`1` 使该条目只分配给一个会话。`0` 表示不限此次数 |
+| `xhttp-xmux-http-max-requests` | 一个条目累计可发送的 HTTP 请求数。`0` 表示不限。同一个端点承载上下行的 H2/H3 `stream-up` 应为两个请求留出额度 |
+| `xhttp-xmux-http-max-reusable-secs` | 条目自建立起可继续分配新请求或会话的时限，单位为秒。`0` 表示不设此时限 |
+| `xhttp-xmux-http-keepalive-secs` | H2 PING 或 H3 QUIC 保活间隔，单位为秒。省略或填 `0` 时，H2 为 `45` 秒，H3 为 `10` 秒。`-1` 关闭保活 |
+
+#### 独立下行 · 端点与请求
+
+在 `stream-up` 或 `packet-up` 中，可以让持续的下载 GET 走单独的地址、端口和 HTTP 版本。`auto` 会按[传输模式](#传输模式)选用分离上下行的模式。上传和下载仍使用同一个 XHTTP 会话 ID，两端的服务必须能识别这个会话。上下行的 HTTP 版本可分别设置，受各自安全层限制。
+
+| 参数 | 说明 |
+|---|---|
+| `xhttp-download-server` | 下行连接的服务器域名或 IP。配置独立下行时必填 |
+| `xhttp-download-port` | 下行连接的端口，`1–65535`。配置独立下行时必填 |
+| `xhttp-download-host` | GET 的 Host 或 `:authority`。省略时，安全连接优先用下行 SNI，否则使用下行服务器地址 |
+| `xhttp-download-path` | GET 的基础路径，默认 `/`，可包含查询参数。填写下行服务实际使用的路径 |
+| `xhttp-download-header` | 只加到独立下行 GET。可重复写 `xhttp-download-header="名称: 值"`，每个名称写一次。用 `xhttp-download-host` 设置 Host |
+| `xhttp-download-alpn` | 下行的 HTTP 版本，填写一个值。明文只用 `http/1.1`，普通 TLS 可用 `http/1.1`、`h2`、`h3`，REALITY 用 `h2`。有安全层时默认 `h2`，明文默认 `http/1.1` |
+
+#### 独立下行 · 安全
+
+| 参数 | 说明 |
+|---|---|
+| `xhttp-download-over-tls` | `true` 开启普通 TLS。省略时默认明文。填写有效的下行 REALITY 公钥后，省略此项等同于开启，不能显式设置为 `false` |
+| `xhttp-download-sni` | 下行 TLS 或 REALITY 使用的服务器名称，默认用下行服务器地址 |
+| `xhttp-download-skip-cert-verify` | 普通 TLS 的下行证书校验开关。`true` 表示跳过，默认 `false`。REALITY 下行保持关闭 |
+| `xhttp-download-tls-profile` | 下行 TLS 指纹，支持使用 TLS 的 HTTP/1.1、H2 和使用 REALITY 的 H2。省略时使用全局指纹 |
+| `xhttp-download-tls-cert-sha256` | 普通 TLS 下行的证书 SHA-256 指纹 |
+| `xhttp-download-tls-pubkey-sha256` | 普通 TLS 下行证书的公钥 SHA-256 指纹，两种指纹同时填写时优先用此项 |
+| `xhttp-download-public-key` | 下行 REALITY 公钥。填写后下行使用 REALITY + H2，证书校验跳过和两项普通 TLS 指纹留空 |
+| `xhttp-download-short-id` | 下行 REALITY 的 Short ID，填服务端要求的偶数位十六进制字符串，最多 16 位。服务端允许空值时可写 `xhttp-download-short-id=""` |
+
+例如，上行使用 H3 + TLS，下行使用 H2 + TLS。下行服务器、端口和路径由服务端提供。
+
+```ini
+VLESS-XHTTP-Split = VLESS,upload.example.com,443,"52396e06-041a-4cc2-be5c-8525eb457809",transport=xhttp,over-tls=true,sni=upload.example.com,alpn=h3,path=/xhttp,xhttp-mode=stream-up,xhttp-download-server=download.example.com,xhttp-download-port=443,xhttp-download-sni=download.example.com,xhttp-download-over-tls=true,xhttp-download-alpn=h2,xhttp-download-path=/xhttp
+```
+
+#### 独立下行 · XMUX
+
+只作用于独立下行的 H2 或 H3 连接。HTTP/1.1 独立下行的每个 GET 各使用一个 TCP 连接。整组不填时继承主节点的 XMUX 设置，一旦设置其中任一字段，下行就独立采用这组设置。下行的整组默认值、区间写法和额度互斥规则与 [XMUX](#xmux) 相同。
+
+| 参数 | 说明 |
+|---|---|
+| `xhttp-download-xmux-max-concurrency` | 每个下行池条目同时承载的会话额度 |
+| `xhttp-download-xmux-max-connections` | 下行连接池的条目数量 |
+| `xhttp-download-xmux-max-reuse-times` | 一个下行池条目累计可分配的会话次数 |
+| `xhttp-download-xmux-http-max-requests` | 一个下行池条目累计可发送的 GET 请求数 |
+| `xhttp-download-xmux-http-max-reusable-secs` | 下行池条目可继续复用的时间，单位为秒 |
+| `xhttp-download-xmux-http-keepalive-secs` | 下行保活间隔，单位为秒。`0` 使用对应 HTTP 版本的默认间隔，`-1` 关闭 |
+
+#### 独立下行 · 填充
+
+只作用于独立下行 GET。整组不填时继承主节点的填充设置。设置任一字段后，未填字段按[填充](#填充)的默认值处理。
+
+| 参数 | 说明 |
+|---|---|
+| `xhttp-download-padding-bytes` | GET 的填充大小或区间，默认 `100-1000` 字节 |
+| `xhttp-download-padding-obfs-mode` | 是否开启下行自定义填充，默认 `false`。关闭时仍在 `Referer` 所含 URL 的查询参数中填充 |
+| `xhttp-download-padding-placement` | 自定义填充的位置，支持 `queryInHeader`、`query`、`header`、`cookie`，默认 `queryInHeader` |
+| `xhttp-download-padding-key` | 自定义填充的查询参数名或 Cookie 名，默认 `x_padding` |
+| `xhttp-download-padding-header` | 承载自定义填充的请求头名称，默认 `X-Padding`。适用于 `queryInHeader` 或 `header` |
+| `xhttp-download-padding-method` | 自定义填充内容的生成方式，支持 `repeat-x` 和 `tokenish`，默认 `repeat-x` |
+
+#### 独立下行 · 会话 ID
+
+整个小节不填时，GET 继承主节点的会话 ID 位置和字段名。填任一字段后，另一个字段使用本组默认值。上下行发送的 ID 值相同，字符表和长度由主节点生成设置决定。
+
+| 参数 | 说明 |
+|---|---|
+| `xhttp-download-session-id-placement` | 只改变独立下行 GET 携带会话 ID 的位置。支持 `path`、`query`、`header`、`cookie`，默认 `path` |
+| `xhttp-download-session-id-key` | 当位置为 `query`、`header` 或 `cookie` 时使用的字段名。查询参数和 Cookie 默认为 `x_session`，请求头默认为 `X-Session` |
 
 ## WireGuard
 
@@ -504,6 +614,36 @@ Snell-HTTP = Snell,snell.example.com,6162,"your-psk",version=4,obfs=http,obfs-ho
 手动添加 Snell 节点时使用 v4。需要指定 v5 时，可在配置文件的 `[Proxy]` 段填写 `version=5`。
 
 尚未接入 [Snell v5 的 QUIC Proxy Mode](https://kb.nssurge.com/surge-knowledge-base/release-notes/snell#quic-proxy-mode)。
+
+## Mieru
+
+Loon 使用 Mieru 的 TCP 传输。服务器和端口填写 Mieru 服务端（mita）的 TCP 监听地址和端口。启用 UDP 后，业务 UDP 数据报也通过这条 TCP 传输转发。
+
+**配置格式**
+
+```ini
+节点名称 = mieru,服务器,端口,"用户名","密码",可选参数
+```
+
+**配置示例**
+
+```ini
+[Proxy]
+Mieru-TCP = mieru,mieru.example.com,8443,"alice","your-password"
+Mieru-UDP = mieru,mieru.example.com,8443,"alice","your-password",udp=true,block-quic=false,ip-mode=prefer-v4,server-dns="223.5.5.5,https://dns.example.com/dns-query"
+```
+
+| 参数 | 默认值 | 说明 |
+|---|---|---|
+| 服务器 | 必填 | Mieru 服务端的域名或 IP。IPv6 地址可写成 `[2001:db8::1]` |
+| 端口 | 必填 | 服务端监听的 TCP 端口，范围为 `1–65535` |
+| 用户名、密码 | 必填 | 按此顺序填写服务端提供的凭据，各为 `1–64` 个 UTF-8 字节。用双引号保留值里的逗号和首尾空格 |
+| `udp` | `false` | 设为 `true` 开启 UDP over TCP，连接服务端时仍使用同一个 TCP 端口 |
+| `block-quic` | `true` | 默认拦截 QUIC。需要转发 QUIC 时，同时设置 `udp=true` 和 `block-quic=false` |
+| `ip-mode` | 未设置 | 节点服务器域名的地址族策略，可填 `auto`、`v4-only`、`dual`、`prefer-v4`、`prefer-v6` 或 `v6-only` |
+| `server-dns` | 未设置 | 指定解析节点服务器域名的 DNS。多个地址用英文逗号分隔，并用双引号包裹整个值。格式见[通用参数](#通用参数) |
+
+配置文件中省略 `udp` 时默认为关闭。在 iOS 和 macOS 的添加节点页面新建 Mieru 节点时，UDP 开关默认开启，保存后写入 `udp=true`。
 
 ## Custom by JavaScript
 

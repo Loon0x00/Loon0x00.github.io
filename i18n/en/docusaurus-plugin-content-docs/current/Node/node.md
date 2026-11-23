@@ -228,7 +228,35 @@ ShadowTLS example:
 VLESS-ShadowTLS = VLESS,vless.example.com,443,"52396e06-041a-4cc2-be5c-8525eb457809",transport=tcp,over-tls=false,shadow-tls-password=shadow-password,shadow-tls-sni=www.example.com,shadow-tls-version=3,udp=true,block-quic=false,ip-mode=prefer-v4,server-dns="223.5.5.5,quic://dns.example.com"
 ```
 
-`transport` supports `tcp`, `ws`, `http`, and `xhttp`. `flow` currently supports `xtls-rprx-vision`. See [XHTTP](#xhttp) for XHTTP configuration.
+`transport` supports `tcp`, `ws`, `http`, and `xhttp`. The `host` and `path` for WebSocket and HTTP obfuscation must match the server settings. See [XHTTP](#xhttp) for XHTTP configuration.
+
+### VLESS Encryption
+
+VLESS Encryption applies to VLESS over TCP, WebSocket, HTTP obfuscation, and XHTTP. It can run on its own or inside standard TLS or REALITY. The server must also enable VLESS Encryption. Use the mode and public keys supplied by the server.
+
+| Argument | Default | Description |
+|---|---|---|
+| `encryption-mode` | `none` | `none` disables Encryption. `native` uses the base encryption mode. `xorpub` also masks public-key material in the handshake. `random` additionally masks the encrypted record length field. The node editor selects `native` when you enable Encryption |
+| `encryption-rtt` | `0rtt` | `0rtt` resumes a session when a valid ticket is available. The first connection and connections with expired tickets perform a full handshake. `1rtt` performs a full handshake for every new Encryption session |
+| `encryption-public-keys` | Unset | Required when Encryption is enabled. Enter server-provided Base64URL public keys. Supports X25519 and ML-KEM-768 keys. Separate multiple keys with periods (`.`) and preserve the server-provided order. The REALITY public key goes in `public-key` |
+| `encryption-padding` | `100-111-1111.75-0-111.50-0-3333` | Custom padding for a full handshake. Separate `probability-minimum-maximum` triplets with periods. Starting with the first triplet, alternate padding lengths in bytes and gaps between segments in milliseconds. Set the first probability to `100` and both lengths to at least `35`. For example, `100-128-128` adds 128 bytes with no gap. Omit this argument to keep the default |
+
+### XTLS Vision
+
+Set `flow` to `xtls-rprx-vision` or `xtls-rprx-vision-udp443`. Omit `flow` to leave Vision off.
+
+| Combination | Scope |
+|---|---|
+| Vision with Encryption disabled | TCP with TLS or REALITY |
+| Vision with Encryption enabled | TCP, WebSocket, HTTP obfuscation, and XHTTP. For REALITY with XHTTP, omit `alpn` or specify a single `h2` value |
+
+With Encryption enabled, `xtls-rprx-vision` rejects datagrams for UDP port 443 and `xtls-rprx-vision-udp443` permits them. Set `udp=true` to forward UDP. To forward QUIC traffic, also set `block-quic=false`.
+
+This example combines VLESS, XHTTP, REALITY, Encryption, and Vision. Replace the addresses, UUID, path, and both public keys with values supplied by the server.
+
+```ini
+VLESS-Encrypted-XHTTP = VLESS,vless.example.com,443,"52396e06-041a-4cc2-be5c-8525eb457809",transport=xhttp,path=/xhttp,host=vless.example.com,alpn=h2,xhttp-mode=stream-one,xhttp-xmux-max-connections=1,over-tls=true,sni=www.example.com,public-key="LgJ9bNTyUqBLFkDA12-QgEL7c1yQ1ztk-V1Q-3OLXSk",short-id=164168844958a16d,encryption-mode=native,encryption-rtt=0rtt,encryption-public-keys="MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY",flow=xtls-rprx-vision,udp=true
+```
 
 ## Trojan
 
@@ -254,7 +282,7 @@ Trojan-Reality = Trojan,trojan.example.com,443,"password",transport=tcp,public-k
 
 ## XHTTP
 
-XHTTP is a transport for VLESS, VMess, and Trojan. All three protocols can forward TCP over HTTP/1.1 or HTTP/2. With `udp=true`, they can also carry UDP datagrams over the same transport. VLESS nodes omit `flow`, VMess uses AEAD with `alterId=0`, and Trojan uses TLS or REALITY.
+XHTTP is a transport for VLESS, VMess, and Trojan over HTTP/1.1, HTTP/2, or HTTP/3. It forwards TCP and can carry application UDP datagrams in XHTTP requests when `udp=true`. VMess uses AEAD with `alterId=0`. Trojan uses standard TLS or REALITY. For VLESS over XHTTP, enable [VLESS Encryption](#vless-encryption) to use [XTLS Vision](#xtls-vision).
 
 ```ini
 [Proxy]
@@ -269,29 +297,29 @@ Trojan-XHTTP = Trojan,trojan.example.com,443,"password",transport=xhttp,path=/xh
 |---|---|
 | `transport=xhttp` | Use XHTTP. The server address, port, and authentication arguments retain the existing format of each protocol |
 | `path` | Base path for XHTTP requests. Defaults to `/` and may contain query arguments. It must match the server configuration |
-| `host` | Host for HTTP requests; this maps to `:authority` in HTTP/2. When omitted, Loon uses `sni` first and then the node server address |
-| `over-tls` | VLESS and VMess can use `true` for standard TLS or `false` for plaintext HTTP/1.1. Trojan uses TLS by default |
-| `alpn` | Set `http/1.1` or `h2` to select the HTTP version. When omitted, standard TLS and REALITY use `h2`, while plaintext uses `http/1.1`. HTTP/2 requires standard TLS or REALITY |
+| `host` | HTTP request host, sent as `:authority` in HTTP/2 and HTTP/3. When omitted, Loon uses `sni` first and then the node server address |
+| `over-tls` | VLESS and VMess can use `true` for standard TLS or `false` for plaintext HTTP/1.1. Trojan defaults to TLS and uses REALITY when a REALITY public key is set |
+| `alpn` | Selects the HTTP version. Standard TLS supports `http/1.1`, `h2`, and `h3` and defaults to `h2`. Plaintext uses `http/1.1`. REALITY uses `h2` |
 | `xhttp-mode` | Supports `auto`, `packet-up`, `stream-up`, and `stream-one`; defaults to `auto` |
 | `public-key`, `short-id`, `sni` | For REALITY, specify the server public key, Short ID, and server name. `alpn` may be omitted or set to `h2` |
-| `udp` | Set to `true` to allow the XHTTP node to forward UDP |
+| `udp` | Set to `true` to forward application UDP through XHTTP. HTTP/3 uses UDP for the connection to the node itself and is selected by `alpn=h3` |
 
-For standard TLS certificate verification, certificate or public-key fingerprints, and `tls-profile`, see [Common Arguments](#common-arguments).
+See [Common Arguments](#common-arguments) for standard TLS certificate verification and fingerprints. The `tls-profile` argument applies to TLS or REALITY handshakes over TCP, used by HTTP/1.1 and H2.
 
 ### Transport Modes
 
-HTTP/1.1 and HTTP/2 both support three explicit modes. The mode must match the server configuration.
+HTTP/1.1, HTTP/2, and HTTP/3 all support the three explicit modes. Match the server configuration.
 
 | Mode | Uplink and downlink organization |
 |---|---|
 | `packet-up` | The downlink uses a persistent GET. Uplink data is split into multiple sequenced HTTP requests |
 | `stream-up` | The downlink uses a persistent GET and the uplink uses one persistent request. Both requests use the same session ID |
 | `stream-one` | The request body and response body of one persistent request carry the uplink and downlink, respectively |
-| `auto` | Selects `packet-up` for standard TLS or plaintext, and `stream-one` for REALITY |
+| `auto` | Selects `packet-up` for standard TLS or plaintext. With REALITY, selects `stream-one` without a separate downlink and `stream-up` with one |
 
 ### Advanced Arguments
 
-The following advanced arguments apply to HTTP/1.1 and HTTP/2. Their effective scope depends on the mode actually used by the node. Arguments retain the `key=value` format and can be combined on a node line as needed.
+Write arguments as `key=value`. Their scope follows the mode the node actually uses. Arguments that accept a range also accept a single value or a closed range such as `100-300`. Main request headers apply to the main endpoint. A separate downlink GET uses its own request headers.
 
 #### Uplink and Packetization
 
@@ -310,18 +338,18 @@ All three modes add padding to every HTTP request. By default, repeated `X` char
 
 | Argument | Scope | Usage and default |
 |---|---|---|
-| `xhttp-padding-bytes` | Every request in all three modes | Defaults to `100-1000`. Accepts a single value or a closed range, selected independently for each request. `0` uses the default range |
-| `xhttp-padding-obfs-mode` | Every request in all three modes | Defaults to `false`. Set to `true` to enable the custom padding arguments below |
-| `xhttp-padding-placement` | Every request in all three modes when custom padding is enabled | `queryInHeader`, the default, places padding in a query argument of the URL contained in the specified request header. `query` writes it to the actual request URL, `header` writes it directly as a request-header value, and `cookie` writes it to a Cookie |
+| `xhttp-padding-bytes` | Requests to the main endpoint and separate downlink GETs that inherit the main padding settings | Defaults to `100-1000`. Accepts a single value or a closed range, selected independently for each request. `0` uses the default range |
+| `xhttp-padding-obfs-mode` | Requests to the main endpoint and separate downlink GETs that inherit the main padding settings | Defaults to `false`. Set to `true` to enable the custom padding arguments below |
+| `xhttp-padding-placement` | Requests to the main endpoint and separate downlink GETs that inherit the main padding settings when custom padding is enabled | `queryInHeader`, the default, places padding in a query argument of the URL contained in the specified request header. `query` writes it to the actual request URL, `header` writes it directly as a request-header value, and `cookie` writes it to a Cookie |
 | `xhttp-padding-key` | Custom padding with placement `queryInHeader`, `query`, or `cookie` | Padding query-argument or Cookie name; defaults to `x_padding` |
 | `xhttp-padding-header` | Custom padding with placement `queryInHeader` or `header` | Name of the request header carrying the padding; defaults to `X-Padding` |
-| `xhttp-padding-method` | Every request in all three modes when custom padding is enabled | Defaults to `repeat-x`, which generates repeated `X` characters by character count. `tokenish` generates random letters and digits, with padding length measured after HPACK Huffman encoding |
+| `xhttp-padding-method` | Requests to the main endpoint and separate downlink GETs that inherit the main padding settings when custom padding is enabled | Defaults to `repeat-x`, which generates repeated `X` characters by character count. `tokenish` generates random letters and digits, with padding length measured after HPACK Huffman encoding |
 
 #### Request Headers
 
 | Argument | Scope | Usage and default |
 |---|---|---|
-| `xhttp-header` | Every request in all three modes | Format: `xhttp-header="Name: Value"`. Specify one item per request header; the argument may be repeated. Set `Host` with `host`. Loon generates the request headers required for padding and HTTP framing |
+| `xhttp-header` | Requests to the main endpoint in all three modes | Format: `xhttp-header="Name: Value"`. Specify one item per request header; the argument may be repeated. Set `Host` with `host`. Loon generates the request headers required for padding and HTTP framing |
 | `xhttp-no-grpc-header` | Persistent `stream-up` uplink requests and bidirectional `stream-one` requests only | Defaults to `false`. Set to `true` to omit the automatically added `Content-Type: application/grpc` |
 
 #### Session IDs and Sequence Numbers
@@ -336,6 +364,88 @@ Session IDs allow the server to pair separate uplink and downlink requests. Sequ
 | `xhttp-session-id-length` | `packet-up` and `stream-up`; used together with the session ID character table | Accepts a positive integer or a closed range. Takes effect when the custom settings are valid; the default is a 36-character UUID |
 | `xhttp-seq-placement` | `packet-up` uplink requests only | Supports `path`, `query`, `header`, and `cookie`; defaults to `path` |
 | `xhttp-seq-key` | `packet-up` uplink requests only, when the sequence number is placed in a query argument, request header, or Cookie | Defaults to `x_seq` for query arguments and Cookies, and `X-Seq` for request headers |
+
+#### XMUX
+
+Direct XHTTP nodes use XMUX by default. With HTTP/2 and HTTP/3, multiple XHTTP sessions can share existing connections. HTTP/1.1 reuses connections for short `packet-up` uploads. Persistent requests use their own connections.
+
+These arguments apply to the main endpoint. The same endpoint also handles downloads when no separate downlink is configured. Limits accept a positive integer or a closed range. When all arguments are omitted or set to `0`, the defaults are `3` pool entries, `600-900` requests per entry, and a reuse lifetime of `1800-3000` seconds. When any argument is nonzero, the configured limits apply as a group and omitted limits are treated as `0`. Only one of `max-concurrency` and `max-connections` may be positive.
+
+| Argument | Description |
+|---|---|
+| `xhttp-xmux-max-concurrency` | Maximum number of XHTTP sessions assigned concurrently to one pool entry. Loon can open a new entry when this limit is reached. `0` leaves this concurrency limit unset |
+| `xhttp-xmux-max-connections` | Number of reusable entries to maintain in the pool. With `1`, new sessions prefer the same entry while it has capacity. `0` leaves the pool size unspecified |
+| `xhttp-xmux-max-reuse-times` | Total number of session assignments per entry, including the first. `1` assigns the entry to one session. `0` leaves this count unlimited |
+| `xhttp-xmux-http-max-requests` | Total HTTP requests per entry. `0` leaves the count unlimited. H2/H3 `stream-up` needs capacity for two requests when both directions use the same endpoint |
+| `xhttp-xmux-http-max-reusable-secs` | How many seconds after creation an entry can accept new requests or sessions. `0` leaves this time limit unset |
+| `xhttp-xmux-http-keepalive-secs` | H2 PING or H3 QUIC keepalive interval in seconds. Omitted or `0` uses `45` seconds for H2 and `10` for H3. `-1` disables keepalive |
+
+#### Separate Downlink · Endpoint and Request
+
+With `stream-up` or `packet-up`, the persistent download GET can use a separate address, port, and HTTP version. `auto` selects a split mode according to the [transport mode rules](#transport-modes). The upload and download use the same XHTTP session ID. Both endpoints must recognize that session. Each direction can select its own HTTP version within the limits of its security layer.
+
+| Argument | Description |
+|---|---|
+| `xhttp-download-server` | Downlink server hostname or IP address. Required for a separate downlink |
+| `xhttp-download-port` | Downlink port, `1–65535`. Required for a separate downlink |
+| `xhttp-download-host` | Host or `:authority` for the GET. When omitted, a secured connection uses the downlink SNI if set and otherwise uses the server address |
+| `xhttp-download-path` | Base path for the GET. Defaults to `/` and may include query arguments. Use the downlink server's actual path |
+| `xhttp-download-header` | Adds one header only to the separate downlink GET. Repeat `xhttp-download-header="Name: Value"` for different names. Set Host with `xhttp-download-host` |
+| `xhttp-download-alpn` | A single HTTP version for the downlink. Plaintext uses `http/1.1`. Standard TLS supports `http/1.1`, `h2`, and `h3`. REALITY uses `h2`. The default is `h2` for a secured connection and `http/1.1` for plaintext |
+
+#### Separate Downlink · Security
+
+| Argument | Description |
+|---|---|
+| `xhttp-download-over-tls` | `true` enables standard TLS. The default is plaintext. When a downlink REALITY public key is set, omitting this argument enables the security layer. An explicit `false` is incompatible with REALITY |
+| `xhttp-download-sni` | Server name for downlink TLS or REALITY. Defaults to the downlink server address |
+| `xhttp-download-skip-cert-verify` | Certificate verification for a standard TLS downlink. `true` skips verification. Defaults to `false`. Leave it off for REALITY |
+| `xhttp-download-tls-profile` | Downlink TLS fingerprint for HTTP/1.1 or H2 over TLS, or H2 with REALITY. Omit to use the global fingerprint |
+| `xhttp-download-tls-cert-sha256` | Certificate SHA-256 fingerprint for a standard TLS downlink |
+| `xhttp-download-tls-pubkey-sha256` | Certificate public-key SHA-256 fingerprint for a standard TLS downlink. Takes precedence if both fingerprints are configured |
+| `xhttp-download-public-key` | REALITY public key for the downlink. Selects REALITY over H2. Leave certificate verification bypass and both standard TLS fingerprint fields unset |
+| `xhttp-download-short-id` | Downlink REALITY Short ID. Use the even-length hexadecimal value specified by the server, with at most 16 digits. Use `xhttp-download-short-id=""` if the server accepts an empty value |
+
+This example uses H3 with TLS for upload and H2 with TLS for download. Use the server-provided downlink address, port, and path.
+
+```ini
+VLESS-XHTTP-Split = VLESS,upload.example.com,443,"52396e06-041a-4cc2-be5c-8525eb457809",transport=xhttp,over-tls=true,sni=upload.example.com,alpn=h3,path=/xhttp,xhttp-mode=stream-up,xhttp-download-server=download.example.com,xhttp-download-port=443,xhttp-download-sni=download.example.com,xhttp-download-over-tls=true,xhttp-download-alpn=h2,xhttp-download-path=/xhttp
+```
+
+#### Separate Downlink · XMUX
+
+These arguments apply only to separate downlink H2 and H3 connections. Each separate HTTP/1.1 download GET uses its own TCP connection. Omit the whole group to inherit the main XMUX settings. Setting any argument configures the entire downlink group independently. Group defaults, range syntax, and mutually exclusive limits follow the [XMUX rules](#xmux).
+
+| Argument | Description |
+|---|---|
+| `xhttp-download-xmux-max-concurrency` | Concurrent session assignments per downlink pool entry |
+| `xhttp-download-xmux-max-connections` | Number of reusable entries in the downlink connection pool |
+| `xhttp-download-xmux-max-reuse-times` | Total session assignments per downlink entry |
+| `xhttp-download-xmux-http-max-requests` | Total GET requests per downlink entry |
+| `xhttp-download-xmux-http-max-reusable-secs` | Reuse lifetime per downlink entry in seconds |
+| `xhttp-download-xmux-http-keepalive-secs` | Downlink keepalive interval in seconds. `0` uses the default for the selected HTTP version. `-1` disables keepalive |
+
+#### Separate Downlink · Padding
+
+These arguments only affect the separate downlink GET. Omit the whole group to inherit the main padding settings. Setting any argument makes the other arguments use their [padding defaults](#padding).
+
+| Argument | Description |
+|---|---|
+| `xhttp-download-padding-bytes` | GET padding size or range. Defaults to `100-1000` bytes |
+| `xhttp-download-padding-obfs-mode` | Enables custom downlink padding. Defaults to `false`, which places padding in a query argument of the URL carried by `Referer` |
+| `xhttp-download-padding-placement` | Custom padding placement. Supports `queryInHeader`, `query`, `header`, and `cookie`. Defaults to `queryInHeader` |
+| `xhttp-download-padding-key` | Query argument or Cookie name for custom padding. Defaults to `x_padding` |
+| `xhttp-download-padding-header` | Request header for custom padding in `queryInHeader` or `header`. Defaults to `X-Padding` |
+| `xhttp-download-padding-method` | Custom padding generation method. Supports `repeat-x` and `tokenish`. Defaults to `repeat-x` |
+
+#### Separate Downlink · Session ID
+
+Omit both arguments to inherit the main session ID placement and field name. Setting one makes the other use the defaults below. Both directions send the same ID. The main node settings determine its character set and length.
+
+| Argument | Description |
+|---|---|
+| `xhttp-download-session-id-placement` | Session ID placement in the separate downlink GET. Supports `path`, `query`, `header`, and `cookie`. Defaults to `path` |
+| `xhttp-download-session-id-key` | Field name for `query`, `header`, or `cookie` placement. Defaults to `x_session` for a query argument or Cookie, and `X-Session` for a header |
 
 ## WireGuard
 
@@ -504,6 +614,36 @@ Configure `obfs=http` only when the server uses HTTP obfuscation.
 When adding a Snell node manually, Loon uses v4. To specify v5, add `version=5` to the node in the `[Proxy]` section of the configuration file.
 
 [Snell v5 QUIC Proxy Mode](https://kb.nssurge.com/surge-knowledge-base/release-notes/snell#quic-proxy-mode) is not yet supported.
+
+## Mieru
+
+Loon uses Mieru over TCP. Enter the address and port of the Mieru server's TCP listener (mita). When UDP is enabled, the same TCP transport carries UDP datagrams.
+
+**Configuration Format**
+
+```ini
+Node name = mieru,server,port,"username","password",optional arguments
+```
+
+**Examples**
+
+```ini
+[Proxy]
+Mieru-TCP = mieru,mieru.example.com,8443,"alice","your-password"
+Mieru-UDP = mieru,mieru.example.com,8443,"alice","your-password",udp=true,block-quic=false,ip-mode=prefer-v4,server-dns="223.5.5.5,https://dns.example.com/dns-query"
+```
+
+| Argument | Default | Description |
+|---|---|---|
+| Server | Required | Hostname or IP address of the Mieru server. IPv6 addresses can use square brackets, as in `[2001:db8::1]` |
+| Port | Required | TCP port the server listens on, from `1` to `65535` |
+| Username and password | Required | Enter the server-provided credentials in this order. Each must be `1–64` bytes in UTF-8. Use double quotes to preserve commas and leading or trailing spaces |
+| `udp` | `false` | Set to `true` to enable UDP over TCP. The connection to the server still uses the same TCP port |
+| `block-quic` | `true` | Blocks QUIC by default. To forward QUIC, set both `udp=true` and `block-quic=false` |
+| `ip-mode` | Unset | Address-family policy for resolving the node hostname. Accepts `auto`, `v4-only`, `dual`, `prefer-v4`, `prefer-v6`, and `v6-only` |
+| `server-dns` | Unset | DNS servers for resolving the node hostname. Separate multiple addresses with commas and quote the entire value. See [Common Arguments](#common-arguments) for the supported formats |
+
+Omitting `udp` from a configuration line leaves UDP off. When you add a Mieru node in the iOS or macOS editor, the UDP switch starts on and the editor saves it as `udp=true`.
 
 ## Custom by JavaScript
 
