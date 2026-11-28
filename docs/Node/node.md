@@ -200,7 +200,7 @@ VMess-ShadowTLS = VMess,vmess.example.com,443,auto,"52396e06-041a-4cc2-be5c-8525
 VMess-Reality = VMess,vmess.example.com,443,auto,"52396e06-041a-4cc2-be5c-8525eb457809",transport=tcp,alterId=0,public-key="LgJ9bNTyUqBLFkDA12-QgEL7c1yQ1ztk-V1Q-3OLXSk",short-id=164168844958a16d,over-tls=true,sni=www.example.com,tls-profile=chrome,udp=true,block-quic=false,ip-mode=prefer-v4,server-dns="223.5.5.5,h3://dns.example.com/dns-query"
 ```
 
-`transport` 支持 `tcp`、`ws`、`http` 和 `xhttp`。`host` 和 `path` 用于 WebSocket、HTTP 和 XHTTP。加密方式支持 `none`、`auto`、`aes-128-cfb`、`aes-128-gcm`、`chacha20-ietf-poly1305`。XHTTP 的配置见 [XHTTP](#xhttp)。
+`transport` 支持 `tcp`、`ws`、`http`、`grpc` 和 `xhttp`。`host` 和 `path` 用于 WebSocket、HTTP 和 XHTTP。加密方式支持 `none`、`auto`、`aes-128-cfb`、`aes-128-gcm`、`chacha20-ietf-poly1305`。传输专用参数见 [gRPC](#grpc) 和 [XHTTP](#xhttp)。
 
 ## VLESS
 
@@ -228,11 +228,11 @@ ShadowTLS 示例：
 VLESS-ShadowTLS = VLESS,vless.example.com,443,"52396e06-041a-4cc2-be5c-8525eb457809",transport=tcp,over-tls=false,shadow-tls-password=shadow-password,shadow-tls-sni=www.example.com,shadow-tls-version=3,udp=true,block-quic=false,ip-mode=prefer-v4,server-dns="223.5.5.5,quic://dns.example.com"
 ```
 
-`transport` 支持 `tcp`、`ws`、`http` 和 `xhttp`。WebSocket 和 HTTP 混淆的 `host`、`path` 应与服务端设置一致。XHTTP 的配置见 [XHTTP](#xhttp)。
+`transport` 支持 `tcp`、`ws`、`http`、`grpc` 和 `xhttp`。WebSocket 和 HTTP 混淆的 `host`、`path` 应与服务端设置一致。传输专用参数见 [gRPC](#grpc) 和 [XHTTP](#xhttp)。
 
 ### VLESS Encryption
 
-VLESS Encryption 只用于 VLESS。它可用于 TCP、WebSocket、HTTP 混淆和 XHTTP，可独立使用，也可叠加在普通 TLS 或 REALITY 内。服务端也要开启 VLESS Encryption，模式和公钥以服务端提供的配置为准。
+VLESS Encryption 只用于 VLESS。它可用于 TCP、WebSocket、HTTP 混淆、gRPC 和 XHTTP，可独立使用，也可叠加在普通 TLS 或 REALITY 内。服务端也要开启 VLESS Encryption，模式和公钥以服务端提供的配置为准。
 
 | 参数 | 默认值 | 说明 |
 |---|---|---|
@@ -248,7 +248,7 @@ VLESS Encryption 只用于 VLESS。它可用于 TCP、WebSocket、HTTP 混淆和
 | 组合 | 支持范围 |
 |---|---|
 | Vision，Encryption 关闭 | TCP + TLS 或 REALITY |
-| Vision，Encryption 开启 | 支持 Encryption 的 TCP、WebSocket、HTTP 混淆和 XHTTP。使用 REALITY + XHTTP 时，`alpn` 省略或填单个 `h2` |
+| Vision，Encryption 开启 | 支持 Encryption 的 TCP、WebSocket、HTTP 混淆、gRPC 和 XHTTP。使用 REALITY + XHTTP 时，`alpn` 省略或填单个 `h2` |
 
 开启 Encryption 时，`xtls-rprx-vision` 拒绝发往 UDP/443 的数据报，`xtls-rprx-vision-udp443` 允许。转发 UDP 须设置 `udp=true`。需要转发 QUIC 时，还要设置 `block-quic=false`。
 
@@ -278,7 +278,45 @@ Reality 参数示例：
 Trojan-Reality = Trojan,trojan.example.com,443,"password",transport=tcp,public-key="LgJ9bNTyUqBLFkDA12-QgEL7c1yQ1ztk-V1Q-3OLXSk",short-id=164168844958a16d,sni=www.example.com,tls-profile=chrome,alpn=h2,fast-open=true,udp=true,block-quic=false,ip-mode=prefer-v4,server-dns="223.5.5.5,h3://dns.example.com/dns-query"
 ```
 
-`transport` 支持 `tcp`、`ws` 和 `xhttp`。兼容配置中的 `transport=http` 会按 WebSocket 处理。旧参数 `ws=true`、`ws-path`、`ws-headers=Host:域名` 分别对应 `transport=ws`、`path`、`host`。XHTTP 的配置见 [XHTTP](#xhttp)。
+`transport` 支持 `tcp`、`ws`、`grpc` 和 `xhttp`。兼容配置中的 `transport=http` 会按 WebSocket 处理。旧参数 `ws=true`、`ws-path`、`ws-headers=Host:域名` 分别对应 `transport=ws`、`path`、`host`。传输专用参数见 [gRPC](#grpc) 和 [XHTTP](#xhttp)。
+
+## gRPC
+
+VLESS、VMess 和 Trojan 均可设置 `transport=grpc`，在 HTTP/2 上转发 TCP 和 UDP。VMess 使用 AEAD 请求头，填写 `alterId=0`。
+
+```ini
+[Proxy]
+VLESS-gRPC = VLESS,vless.example.com,443,"52396e06-041a-4cc2-be5c-8525eb457809",transport=grpc,grpc-service-name=vless-grpc,over-tls=true,sni=vless.example.com,udp=true
+VMess-gRPC = VMess,vmess.example.com,8080,aes-128-gcm,"52396e06-041a-4cc2-be5c-8525eb457809",alterId=0,transport=grpc,grpc-service-name=vmess-grpc,over-tls=false,udp=true
+Trojan-gRPC = Trojan,trojan.example.com,443,"password",transport=grpc,grpc-service-name=trojan-grpc,grpc-mode=multi,grpc-mux-max-streams=8,host=grpc.example.com,sni=trojan.example.com,udp=true
+```
+
+### gRPC 参数
+
+| 参数 | 说明 |
+|---|---|
+| `transport=grpc` | 使用 gRPC，服务器地址、端口和认证参数沿用各协议的写法 |
+| `grpc-service-name` | 对应 Xray 服务端的 `serviceName`，按服务端原值填写。服务端使用空服务名时可省略 |
+| `grpc-mode` | 默认 `gun`，也可设置为 `multi`。按服务端支持的调用方式选择。普通服务名在两种模式下分别生成 `/服务名/Tun` 和 `/服务名/TunMulti` |
+| `grpc-mux-max-streams` | 每条 HTTP/2 连接的最大并发 gRPC 调用数，范围为 `1–16`，默认 `1`，每个调用独占一条连接。设为 `2–16` 可共享。实际并发上限取配置值和服务器通告值中较小的一个。例如配置为 `8`，服务器允许 `3`，则 TCP 和 UDP 调用合计最多 `3` 个 |
+| `host` | HTTP/2 请求的 `:authority`，用于服务端或反向代理的请求路由。普通 TLS 省略时优先使用 `sni`，再使用节点域名，节点为 IP 时使用 IP 和端口。明文 H2 使用节点域名或 IP 和端口。REALITY 省略时使用节点地址和端口 |
+| `udp` | 设为 `true` 允许转发业务 UDP，每个 UDP 会话占用一个 gRPC 流。TCP 和 UDP 可共享同一条 H2 连接 |
+
+自定义方法路径也写入 `grpc-service-name`。例如 `/edge/BridgeMulti` 直接指定方法路径，`/edge/Bridge|BridgeMulti` 则分别为 `gun` 和 `multi` 指定方法名。
+
+### gRPC 安全设置
+
+| 连接方式 | 参数 |
+|---|---|
+| 普通 TLS | 设置 `over-tls=true`。Trojan 省略时默认使用 TLS。可用 `sni` 指定握手使用的服务器名，证书校验参数见[通用参数](#通用参数) |
+| 明文 HTTP/2（h2c） | 明确设置 `over-tls=false`，服务端也需使用明文 HTTP/2 |
+| REALITY | 填写服务端提供的 `public-key`、`sni`，按需填写 `short-id` 和 `tls-profile`，并设置 `over-tls=true` |
+
+gRPC 固定使用 HTTP/2。`alpn` 可省略，显式填写时只接受 `h2`。`host` 控制 HTTP 请求路由，`sni` 控制 TLS 或 REALITY 握手。
+
+VLESS 可叠加 [VLESS Encryption](#vless-encryption)，每个 gRPC 调用各自建立加密会话。使用 [XTLS Vision](#xtls-vision) 时须开启 Encryption。
+
+当前 gRPC 节点适用于单节点和普通策略组，暂不支持代理链。
 
 ## XHTTP
 

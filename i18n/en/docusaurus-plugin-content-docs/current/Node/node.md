@@ -200,7 +200,7 @@ With Reality arguments:
 VMess-Reality = VMess,vmess.example.com,443,auto,"52396e06-041a-4cc2-be5c-8525eb457809",transport=tcp,alterId=0,public-key="LgJ9bNTyUqBLFkDA12-QgEL7c1yQ1ztk-V1Q-3OLXSk",short-id=164168844958a16d,over-tls=true,sni=www.example.com,tls-profile=chrome,udp=true,block-quic=false,ip-mode=prefer-v4,server-dns="223.5.5.5,h3://dns.example.com/dns-query"
 ```
 
-`transport` supports `tcp`, `ws`, `http`, and `xhttp`. `host` and `path` apply to WebSocket, HTTP, and XHTTP transports. Supported encryption methods are `none`, `auto`, `aes-128-cfb`, `aes-128-gcm`, and `chacha20-ietf-poly1305`. See [XHTTP](#xhttp) for XHTTP configuration.
+`transport` supports `tcp`, `ws`, `http`, `grpc`, and `xhttp`. `host` and `path` apply to WebSocket, HTTP, and XHTTP transports. Supported encryption methods are `none`, `auto`, `aes-128-cfb`, `aes-128-gcm`, and `chacha20-ietf-poly1305`. See [gRPC](#grpc) and [XHTTP](#xhttp) for their transport-specific arguments.
 
 ## VLESS
 
@@ -228,11 +228,11 @@ ShadowTLS example:
 VLESS-ShadowTLS = VLESS,vless.example.com,443,"52396e06-041a-4cc2-be5c-8525eb457809",transport=tcp,over-tls=false,shadow-tls-password=shadow-password,shadow-tls-sni=www.example.com,shadow-tls-version=3,udp=true,block-quic=false,ip-mode=prefer-v4,server-dns="223.5.5.5,quic://dns.example.com"
 ```
 
-`transport` supports `tcp`, `ws`, `http`, and `xhttp`. The `host` and `path` for WebSocket and HTTP obfuscation must match the server settings. See [XHTTP](#xhttp) for XHTTP configuration.
+`transport` supports `tcp`, `ws`, `http`, `grpc`, and `xhttp`. The `host` and `path` for WebSocket and HTTP obfuscation must match the server settings. See [gRPC](#grpc) and [XHTTP](#xhttp) for their transport-specific arguments.
 
 ### VLESS Encryption
 
-VLESS Encryption applies to VLESS over TCP, WebSocket, HTTP obfuscation, and XHTTP. It can run on its own or inside standard TLS or REALITY. The server must also enable VLESS Encryption. Use the mode and public keys supplied by the server.
+VLESS Encryption applies to VLESS over TCP, WebSocket, HTTP obfuscation, gRPC, and XHTTP. It can run on its own or inside standard TLS or REALITY. The server must also enable VLESS Encryption. Use the mode and public keys supplied by the server.
 
 | Argument | Default | Description |
 |---|---|---|
@@ -248,7 +248,7 @@ Set `flow` to `xtls-rprx-vision` or `xtls-rprx-vision-udp443`. Omit `flow` to le
 | Combination | Scope |
 |---|---|
 | Vision with Encryption disabled | TCP with TLS or REALITY |
-| Vision with Encryption enabled | TCP, WebSocket, HTTP obfuscation, and XHTTP. For REALITY with XHTTP, omit `alpn` or specify a single `h2` value |
+| Vision with Encryption enabled | TCP, WebSocket, HTTP obfuscation, gRPC, and XHTTP. For REALITY with XHTTP, omit `alpn` or specify a single `h2` value |
 
 With Encryption enabled, `xtls-rprx-vision` rejects datagrams for UDP port 443 and `xtls-rprx-vision-udp443` permits them. Set `udp=true` to forward UDP. To forward QUIC traffic, also set `block-quic=false`.
 
@@ -278,7 +278,45 @@ Reality argument example:
 Trojan-Reality = Trojan,trojan.example.com,443,"password",transport=tcp,public-key="LgJ9bNTyUqBLFkDA12-QgEL7c1yQ1ztk-V1Q-3OLXSk",short-id=164168844958a16d,sni=www.example.com,tls-profile=chrome,alpn=h2,fast-open=true,udp=true,block-quic=false,ip-mode=prefer-v4,server-dns="223.5.5.5,h3://dns.example.com/dns-query"
 ```
 
-`transport` supports `tcp`, `ws`, and `xhttp`. For compatibility, `transport=http` is handled as WebSocket. The legacy arguments `ws=true`, `ws-path`, and `ws-headers=Host:domain` correspond to `transport=ws`, `path`, and `host`, respectively. See [XHTTP](#xhttp) for XHTTP configuration.
+`transport` supports `tcp`, `ws`, `grpc`, and `xhttp`. For compatibility, `transport=http` is handled as WebSocket. The legacy arguments `ws=true`, `ws-path`, and `ws-headers=Host:domain` correspond to `transport=ws`, `path`, and `host`, respectively. See [gRPC](#grpc) and [XHTTP](#xhttp) for their transport-specific arguments.
+
+## gRPC
+
+VLESS, VMess, and Trojan support `transport=grpc` for forwarding TCP and UDP over HTTP/2. VMess uses an AEAD request header with `alterId=0`.
+
+```ini
+[Proxy]
+VLESS-gRPC = VLESS,vless.example.com,443,"52396e06-041a-4cc2-be5c-8525eb457809",transport=grpc,grpc-service-name=vless-grpc,over-tls=true,sni=vless.example.com,udp=true
+VMess-gRPC = VMess,vmess.example.com,8080,aes-128-gcm,"52396e06-041a-4cc2-be5c-8525eb457809",alterId=0,transport=grpc,grpc-service-name=vmess-grpc,over-tls=false,udp=true
+Trojan-gRPC = Trojan,trojan.example.com,443,"password",transport=grpc,grpc-service-name=trojan-grpc,grpc-mode=multi,grpc-mux-max-streams=8,host=grpc.example.com,sni=trojan.example.com,udp=true
+```
+
+### gRPC Arguments
+
+| Argument | Description |
+|---|---|
+| `transport=grpc` | Selects gRPC. Use the server address, port, and credentials for the node's proxy protocol |
+| `grpc-service-name` | Matches the Xray server's `serviceName`. Omit it when the server uses an empty service name |
+| `grpc-mode` | Defaults to `gun`. Also accepts `multi`. Choose a mode supported by the server. For a plain service name, these modes use `/serviceName/Tun` and `/serviceName/TunMulti`, respectively |
+| `grpc-mux-max-streams` | Maximum concurrent gRPC calls per HTTP/2 connection. Accepts `1–16` and defaults to `1`, which gives each call a dedicated connection. Values `2–16` enable sharing. The effective limit is the lower of this setting and the limit advertised by the server. With `8` configured and a server limit of `3`, each connection carries up to `3` TCP and UDP calls in total |
+| `host` | Sets the HTTP/2 `:authority` for request routing on the server or reverse proxy. With standard TLS, the default is `sni` if set, then the node's domain name or its IP address and port. Plaintext HTTP/2 uses the node's domain name or IP address and port. REALITY defaults to the node's address and port |
+| `udp` | Set to `true` to forward application UDP. Each UDP session uses one gRPC stream. TCP and UDP can share the same HTTP/2 connection |
+
+Set `grpc-service-name` to a custom path when the server provides one. For example, `/edge/BridgeMulti` specifies one method path. `/edge/Bridge|BridgeMulti` selects the first method for `gun` and the second for `multi`.
+
+### gRPC Security Settings
+
+| Connection type | Arguments |
+|---|---|
+| Standard TLS | Set `over-tls=true`. Trojan defaults to TLS when this argument is omitted. Set `sni` to specify the server name for the handshake. See [Common Arguments](#common-arguments) for certificate verification settings |
+| Plaintext HTTP/2 (h2c) | Set `over-tls=false` explicitly and use plaintext HTTP/2 on the server |
+| REALITY | Set `over-tls=true`, enter the server-provided `public-key` and `sni`, and set `short-id` and `tls-profile` as needed |
+
+gRPC uses HTTP/2. You can omit `alpn`. If supplied, the only accepted value is `h2`. The `host` argument controls HTTP request routing, and `sni` controls the TLS or REALITY handshake.
+
+VLESS supports [VLESS Encryption](#vless-encryption), with a separate encryption session per gRPC call. Enable Encryption to use [XTLS Vision](#xtls-vision).
+
+gRPC nodes currently work as individual nodes or in regular policy groups. Proxy chains are currently unsupported.
 
 ## XHTTP
 
