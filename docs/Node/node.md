@@ -560,6 +560,28 @@ Hysteria2 = Hysteria2,hy2.example.com,443,"password",sni=hy2.example.com,skip-ce
 
 `download-bandwidth` 的单位为 Mbps。`server-ports` 用于端口跳跃，`hop-interval` 是切换端口的间隔秒数。
 
+### Gecko 混淆
+
+Gecko 在 Salamander 的基础上，将 QUIC 握手数据报拆成多个带随机填充的 UDP 数据报，减少握手包固定长度的特征。节点的混淆方式和混淆密码必须与服务端一致。
+
+| 参数 | 说明 |
+|---|---|
+| `gecko-password` | 启用 Gecko，并设置混淆密码。节点格式中端口后的密码用于 Hysteria 2 认证，混淆密码由此参数单独设置 |
+| `gecko-password-base64` | 混淆密码包含双引号或控制字符时，可填写密码原始 UTF-8 字节的 Base64。与 `gecko-password` 二选一 |
+| `salamander-password` | 服务端使用 Salamander 时填写。每个节点只配置一种混淆方式 |
+
+在 `[Proxy]` 段配置 Gecko 节点：
+
+```ini
+Hy2-Gecko = Hysteria2,hy2.example.com,443,"auth-password",sni=hy2.example.com,gecko-password="obfs-password",udp=true
+```
+
+也可以通过 `hysteria2://` 或 `hy2://` 链接导入，在查询参数中填写 `obfs=gecko` 和 `obfs-password`。密码含特殊字符时按 URL 规则编码。
+
+```text
+hysteria2://auth-password@hy2.example.com:443/?sni=hy2.example.com&obfs=gecko&obfs-password=obfs-password#Hy2-Gecko
+```
+
 ## AnyTLS
 
 格式：
@@ -631,6 +653,7 @@ Loon 使用 Mieru 的 TCP 传输。服务器和端口填写 Mieru 服务端（mi
 [Proxy]
 Mieru-TCP = mieru,mieru.example.com,8443,"alice","your-password"
 Mieru-UDP = mieru,mieru.example.com,8443,"alice","your-password",udp=true,block-quic=false,ip-mode=prefer-v4,server-dns="223.5.5.5,https://dns.example.com/dns-query"
+Mieru-Pattern = mieru,mieru.example.com,8443,"alice","your-password",udp=true,traffic-pattern=CCoQARoECAEQAyIKCAMqBjBjYjFmZioECAwQGDIECAEQcA==
 ```
 
 | 参数 | 默认值 | 说明 |
@@ -640,10 +663,17 @@ Mieru-UDP = mieru,mieru.example.com,8443,"alice","your-password",udp=true,block-
 | 用户名、密码 | 必填 | 按此顺序填写服务端提供的凭据，各为 `1–64` 个 UTF-8 字节。用双引号保留值里的逗号和首尾空格 |
 | `udp` | `false` | 设为 `true` 开启 UDP over TCP，连接服务端时仍使用同一个 TCP 端口 |
 | `block-quic` | `true` | 默认拦截 QUIC。需要转发 QUIC 时，同时设置 `udp=true` 和 `block-quic=false` |
+| `traffic-pattern` | 未设置 | 可选的客户端流量模式，填写 Mieru Protobuf 配置的标准 Base64 编码。省略时使用默认流量模式 |
 | `ip-mode` | 未设置 | 节点服务器域名的地址族策略，可填 `auto`、`v4-only`、`dual`、`prefer-v4`、`prefer-v6` 或 `v6-only` |
 | `server-dns` | 未设置 | 指定解析节点服务器域名的 DNS。多个地址用英文逗号分隔，并用双引号包裹整个值。格式见[通用参数](#通用参数) |
 
 配置文件中省略 `udp` 时默认为关闭。在 iOS 和 macOS 的添加节点页面新建 Mieru 节点时，UDP 开关默认开启，保存后写入 `udp=true`。
+
+### 流量模式
+
+流量模式可以调整 Mieru 的 TCP 分段、加密帧填充和低熵编码等行为。客户端和服务端可分别设置各自的发送方式。可以使用节点提供方给出的 Base64 值，也可以在官方 Mieru 客户端用 `mieru export traffic-pattern` 导出当前配置的值。复制时保留原值，包括末尾的 `=` 填充字符。 [Mieru 官方流量模式说明](https://github.com/enfein/mieru/blob/v3.39.0/docs/traffic-pattern.zh_CN.md)
+
+在 iOS 和 macOS 新增或编辑本地 Mieru 节点时，在「代理选项 → 流量模式」中粘贴 Base64 值。已有值会回填，清空后保存会移除该参数。Loon 也会从 `mierus://` 导入链接读取这个参数，保存时会校验流量模式格式。
 
 ## Custom by JavaScript
 

@@ -560,6 +560,28 @@ Hysteria2 = Hysteria2,hy2.example.com,443,"password",sni=hy2.example.com,skip-ce
 
 `download-bandwidth` is measured in Mbps. `server-ports` configures port hopping, and `hop-interval` is the number of seconds between port changes.
 
+### Gecko Obfuscation
+
+Building on Salamander, Gecko splits QUIC handshake datagrams into multiple UDP datagrams with random padding, reducing the fixed-length signature of handshake packets. The node's obfuscation method and password must match the server configuration.
+
+| Argument | Description |
+|---|---|
+| `gecko-password` | Enables Gecko and sets its obfuscation password. The password after the port in the node format is used for Hysteria 2 authentication; configure the obfuscation password separately with this argument |
+| `gecko-password-base64` | When the obfuscation password contains double quotes or control characters, specify the standard Base64 encoding of its raw UTF-8 bytes. Use either this argument or `gecko-password` |
+| `salamander-password` | Specify this when the server uses Salamander. Configure only one obfuscation method per node |
+
+Configure a Gecko node in the `[Proxy]` section:
+
+```ini
+Hy2-Gecko = Hysteria2,hy2.example.com,443,"auth-password",sni=hy2.example.com,gecko-password="obfs-password",udp=true
+```
+
+You can also import a `hysteria2://` or `hy2://` URI with `obfs=gecko` and `obfs-password` in its query arguments. Percent-encode passwords containing special characters according to URL rules.
+
+```text
+hysteria2://auth-password@hy2.example.com:443/?sni=hy2.example.com&obfs=gecko&obfs-password=obfs-password#Hy2-Gecko
+```
+
 ## AnyTLS
 
 Format:
@@ -631,6 +653,7 @@ Node name = mieru,server,port,"username","password",optional arguments
 [Proxy]
 Mieru-TCP = mieru,mieru.example.com,8443,"alice","your-password"
 Mieru-UDP = mieru,mieru.example.com,8443,"alice","your-password",udp=true,block-quic=false,ip-mode=prefer-v4,server-dns="223.5.5.5,https://dns.example.com/dns-query"
+Mieru-Pattern = mieru,mieru.example.com,8443,"alice","your-password",udp=true,traffic-pattern=CCoQARoECAEQAyIKCAMqBjBjYjFmZioECAwQGDIECAEQcA==
 ```
 
 | Argument | Default | Description |
@@ -640,10 +663,17 @@ Mieru-UDP = mieru,mieru.example.com,8443,"alice","your-password",udp=true,block-
 | Username and password | Required | Enter the server-provided credentials in this order. Each must be `1–64` bytes in UTF-8. Use double quotes to preserve commas and leading or trailing spaces |
 | `udp` | `false` | Set to `true` to enable UDP over TCP. The connection to the server still uses the same TCP port |
 | `block-quic` | `true` | Blocks QUIC by default. To forward QUIC, set both `udp=true` and `block-quic=false` |
+| `traffic-pattern` | Unset | Optional client traffic pattern containing the standard Base64 encoding of a Mieru Protobuf configuration. When omitted, the default traffic pattern is used |
 | `ip-mode` | Unset | Address-family policy for resolving the node hostname. Accepts `auto`, `v4-only`, `dual`, `prefer-v4`, `prefer-v6`, and `v6-only` |
 | `server-dns` | Unset | DNS servers for resolving the node hostname. Separate multiple addresses with commas and quote the entire value. See [Common Arguments](#common-arguments) for the supported formats |
 
 Omitting `udp` from a configuration line leaves UDP off. When you add a Mieru node in the iOS or macOS editor, the UDP switch starts on and the editor saves it as `udp=true`.
+
+### Traffic Pattern
+
+A traffic pattern can adjust Mieru's TCP segmentation, encrypted-frame padding, low-entropy encoding, and related behavior. The client and server can configure their respective sending behavior independently. Use the Base64 value supplied by the node provider, or export the current configuration from the official Mieru client with `mieru export traffic-pattern`. Preserve the value exactly when copying it, including trailing `=` padding characters. See the [official Mieru traffic-pattern documentation](https://github.com/enfein/mieru/blob/v3.39.0/docs/traffic-pattern.zh_CN.md).
+
+When adding or editing a local Mieru node on iOS or macOS, paste the Base64 value under **Proxy Options → Traffic Pattern**. An existing value is populated when editing; clear it and save to remove the argument. Loon also reads this argument from imported `mierus://` URIs and validates the traffic-pattern format when saving.
 
 ## Custom by JavaScript
 
